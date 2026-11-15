@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ロボ迷路 Python</title>
+<meta name="description" content="ロボットを動かしながら、順次・くり返し・場合分けを学ぶ情報Ⅰの教材。ブラウザだけで Python が動きます。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+1+Code:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Maru+Gothic:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="-20 -20 40 40" aria-hidden="true">
+      <rect x="-15" y="-15" width="30" height="30" rx="8" fill="#f5a524" stroke="#b86e00" stroke-width="2"></rect>
+      <rect x="1" y="-10" width="11" height="20" rx="4" fill="#18212f"></rect>
+      <circle cx="7" cy="-4.5" r="2.4" fill="#fff"></circle>
+      <circle cx="7" cy="4.5" r="2.4" fill="#fff"></circle>
+    </svg>
+    <h1>ロボ迷路 Python</h1>
+  </div>
+  <nav class="steps" id="steps" aria-label="ステップ"></nav>
+  <div class="status" id="py-status" role="status">Python を準備中</div>
+</header>
+
+<section class="guide" aria-labelledby="st-title">
+  <div class="guide-head">
+    <p class="kicker" id="st-kicker"></p>
+    <h2 id="st-title"></h2>
+  </div>
+  <div class="body" id="st-body"></div>
+</section>
+
+<main class="layout">
+
+  <section class="col write" aria-label="プログラム">
+    <div class="samples" id="samples" hidden></div>
+
+
+    <div class="runbar">
+      <button type="button" class="btn primary" id="run" disabled>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"></path></svg>
+        <span id="run-label">準備中</span>
+      </button>
+      <label class="speed" for="speed">速さ
+        <select id="speed">
+          <option value="620">ゆっくり</option>
+          <option value="340" selected>ふつう</option>
+          <option value="110">はやい</option>
+        </select>
+      </label>
+      <button type="button" class="btn ghost" id="reset">最初のプログラムに戻す</button>
+    </div>
+
+    <div class="editor" id="editor">
+      <div class="gutter" id="gutter" aria-hidden="true"></div>
+      <div class="code-wrap">
+        <div class="hl" id="hl" hidden></div>
+        <label class="sr-only" for="code">プログラム</label>
+        <textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off"></textarea>
+      </div>
+    </div>
+
+    <div class="tools" id="tools" aria-label="命令を入れるボタン"></div>
+  </section>
+
+  <section class="col stage" aria-label="ロボットの画面">
+    <div class="world" id="world"></div>
+    <div class="result idle" id="result" role="status" aria-live="polite"></div>
+    <div class="output" id="output-box" hidden>
+      <p class="output-label">print の出力</p>
+      <pre id="output"></pre>
+    </div>
+  </section>
+
+  <section class="col flow" aria-labelledby="flow-title">
+    <div class="flow-head">
+      <h3 id="flow-title">フローチャート</h3>
+      <p id="flow-note">プログラムを書きかえると、図も変わります。</p>
+    </div>
+    <div class="flow-scroll" id="flow"></div>
+  </section>
+
+</main>
+
+<footer class="foot">
+  <p>情報Ⅰ「アルゴリズムとプログラミング」の授業用教材です。進み具合とプログラムは、この端末のブラウザにだけ保存されます。</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
