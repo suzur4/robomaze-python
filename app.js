@@ -434,7 +434,8 @@ function setCode(text) {
 }
 function insertText(text) {
   let done = false;
-  try { done = document.execCommand("insertText", false, text); } catch (e) { done = false; }
+  if (text === "" && ui.code.selectionStart === ui.code.selectionEnd) return;
+  try { done = document.execCommand(text === "" ? "delete" : "insertText", false, text); } catch (e) { done = false; }
   if (!done) ui.code.setRangeText(text, ui.code.selectionStart, ui.code.selectionEnd, "end");
 }
 function refreshGutter() {
@@ -495,8 +496,16 @@ ui.code.addEventListener("keydown", (ev) => {
     const ls = v.lastIndexOf("\n", a - 1) + 1;
     const before = v.slice(ls, a);
     let indent = before.match(/^ */)[0];
+    ev.preventDefault();
+    if (before.length && before.trim() === "") {
+      // 中身のない字下げ行で Enter を押したら、ブロックを抜けて1段戻る
+      ta.setSelectionRange(ls, a);
+      insertText(indent.slice(0, Math.max(0, indent.length - 4)));
+      onEdit(); return;
+    }
     if (/:\s*(#.*)?$/.test(before)) indent += "    ";
-    ev.preventDefault(); insertText("\n" + indent); onEdit(); return;
+    else if (/^\s*(return|break|continue|pass)\b/.test(before)) indent = indent.slice(0, Math.max(0, indent.length - 4));
+    insertText("\n" + indent); onEdit(); return;
   }
   if (ev.key === "Backspace" && a === b) {
     const ls = v.lastIndexOf("\n", a - 1) + 1;
@@ -576,10 +585,38 @@ async function boot() {
 /* ------------------------------------------------------------------ 迷路の盤面 */
 const CELL = 56;
 const DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+/* 拡大縮小。fit は欄の幅に収まる倍率を返す */
+const ZOOMS = [0.5, 0.67, 0.8, 1, 1.25, 1.5, 2];
+function addZoom(panel, inner, label, fit, allLabel, floor = 0) {
+  const bar = h("div", "zoom");
+  bar.setAttribute("role", "group");
+  bar.setAttribute("aria-label", label + "の大きさ");
+  const out = h("button", "btn small", "縮小"), inn = h("button", "btn small", "拡大"), all = h("button", "btn small", allLabel || "元の大きさ");
+  out.type = inn.type = all.type = "button";
+  const val = h("span", "zoom-val");
+  bar.append(out, val, inn, all);
+  panel.before(bar);
+  let z = 1, auto = true;
+  const set = (v) => {
+    z = Math.min(2, Math.max(0.3, Math.round(v * 100) / 100));
+    inner.style.zoom = String(z);
+    val.textContent = Math.round(z * 100) + "%";
+    out.disabled = z <= 0.3; inn.disabled = z >= 2;
+  };
+  out.addEventListener("click", () => { auto = false; set([...ZOOMS].reverse().find((x) => x < z - 0.001) ?? 0.3); });
+  inn.addEventListener("click", () => { auto = false; set(ZOOMS.find((x) => x > z + 0.001) ?? 2); });
+  all.addEventListener("click", () => { auto = true; set(fit ? fit() : 1); });
+  set(1);
+  // 図が描き直されたとき、自分で倍率を変えていなければ幅に合わせ直す
+  const refit = () => { if (auto) set(Math.max(floor, fit ? fit() : 1)); };
+  return { refit, reset: () => { auto = true; refit(); } };
+}
+
 function buildMaze(st) {
   const rows = st.map, H = rows.length, W = rows[0].length;
   const root = svg("svg", { class: "maze", viewBox: `${CELL * 0.6} ${CELL * 0.6} ${(W - 1.2) * CELL} ${(H - 1.2) * CELL}`, role: "img", "aria-label": "迷路" });
-  root.style.maxWidth = (W - 1.2) * CELL + "px";
+  root.setAttribute("width", Math.round((W - 1.2) * CELL));
+  ui.world.dataset.natural = Math.round((W - 1.2) * CELL);
   let sx = 0, sy = 0, gx = 0, gy = 0;
   const tiles = svg("g", {}, root);
   rows.forEach((row, y) => [...row].forEach((ch, x) => {
@@ -698,6 +735,7 @@ function buildMaze(st) {
 const PADSIZE = 440;
 function buildPad() {
   const pad = h("div", "pad");
+  ui.world.dataset.natural = PADSIZE;
   const canvas = document.createElement("canvas");
   canvas.setAttribute("role", "img"); canvas.setAttribute("aria-label", "ロボットが描いた模様");
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -780,6 +818,7 @@ function renderVars(box, vars, prev, st, all) {
 }
 function buildTrace(st) {
   const wrap = h("div", "trace");
+  delete ui.world.dataset.natural;
   const box = h("div", "vars");
   const fnTitle = h("p", "fn-title"); fnTitle.hidden = true;
   const fnBox = h("div", "vars"); fnBox.hidden = true;
@@ -1053,7 +1092,7 @@ function markCleared() {
 /* ------------------------------------------------------------------ フローチャート */
 const FC = { G: 18, H: 34, DH: 48 };
 function textW(s) { let w = 0; for (const ch of s) w += ch.charCodeAt(0) > 0xff ? 12.6 : 7.1; return w; }
-function boxW(s) { return Math.min(Math.max(textW(s) + 30, 124), 250); }
+function boxW(s) { return Math.min(Math.max(textW(s) + 30, 124), 210); }
 function fit(s, w) {
   if (textW(s) <= w - 16) return s;
   let out = "";
@@ -1122,7 +1161,7 @@ function fcLoop(n) {
 }
 function fcIf(n) {
   const yes = fcSeq(n.yes), no = fcSeq(n.no), G = FC.G, DH = FC.DH;
-  const dw = Math.min(Math.max(textW(n.text) + 64, 150), 270);
+  const dw = Math.min(Math.max(textW(n.text) + 64, 150), 220);
   const inner = Math.max(yes.h, no.h);
   const hh = DH + G + inner + G;
   const off = Math.max(dw / 2, yes.r) + 26 + (no.h ? no.l : 0);
@@ -1161,6 +1200,7 @@ function renderFlow(nodes) {
   seq.draw(root, pad + seq.l, pad);
   ui.flow.textContent = "";
   ui.flow.appendChild(root);
+  if (typeof flowZoom !== "undefined") flowZoom.refit();
 }
 function updateFlow() {
   if (!py) { ui.flowNote.textContent = "Python の準備ができると表示されます。"; return; }
@@ -1245,6 +1285,8 @@ function openStage(id, setHash) {
   }
 
   world = stage.kind === "maze" ? buildMaze(stage) : stage.kind === "trace" ? buildTrace(stage) : buildPad();
+  ui.world.classList.toggle("fixed", stage.kind !== "trace");
+  if (typeof worldZoom !== "undefined") worldZoom.reset();
   const saved = store.data.code[stage.id];
   ui.code.value = saved != null ? saved : stage.code;
   ui.code.scrollTop = 0;
@@ -1275,8 +1317,23 @@ function setBig(on) {
 }
 big.addEventListener("click", () => setBig(big.getAttribute("aria-pressed") !== "true"));
 
+const worldZoom = addZoom($("world-frame"), ui.world, "実行の様子", () => {
+  const n = Number(ui.world.dataset.natural);
+  if (!n) return 1;
+  const f = $("world-frame"), cs = getComputedStyle(f);
+  return Math.min(1, Math.floor(((f.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 8) / n) * 100) / 100);
+}, "全体を表示");
+const flowZoom = addZoom($("flow-frame"), ui.flow, "フローチャート", () => {
+  const svgEl = ui.flow.querySelector("svg");
+  if (!svgEl) return 1;
+  const room = $("flow-frame").clientWidth - 8;
+  return Math.min(1, room / Number(svgEl.getAttribute("width")));
+}, "全体を表示", 0.6);
+window.addEventListener("resize", () => { flowZoom.refit(); worldZoom.refit(); });
+
 (function init() {
   if (store.data.big) setBig(true);
   openStage(parseHash() ?? store.data.last ?? 1, false);
+  worldZoom.refit();
   boot();
 })();

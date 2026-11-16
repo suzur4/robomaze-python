@@ -96,6 +96,9 @@ class Maze:
     def forward(self, *args, **kwargs):
         _no_args("forward", args, kwargs)
         self.check("forward")
+        if self.goal:
+            self.rec(t="bump")
+            raise RobotStop("もうゴールしています。ゴールのあとにも進む命令が残っていて、ゴールを通り過ぎました。")
         nx, ny = self.ahead()
         c = self.cell(nx, ny)
         if c == "#":
@@ -109,7 +112,6 @@ class Maze:
         if c == "G":
             self.goal = True
             self.rec(t="goal")
-            raise _Finished()
 
     def left(self, *args, **kwargs):
         _no_args("left", args, kwargs)

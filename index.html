@@ -75,7 +75,7 @@
 
   <section class="col stage" aria-labelledby="stage-title">
     <h3 id="stage-title">ロボット</h3>
-    <div class="world" id="world"></div>
+    <div class="world" id="world-frame" tabindex="0" role="group" aria-label="実行の様子。拡大したときは矢印キーでスクロールできます"><div class="world-in" id="world"></div></div>
     <div class="result idle" id="result" role="status" aria-live="polite"></div>
     <div class="output" id="output-box" hidden>
       <p class="output-label">print の出力</p>
@@ -93,7 +93,7 @@
         <li class="k-if">選択</li>
       </ul>
     </div>
-    <div class="flow-scroll" id="flow" tabindex="0" role="group" aria-label="フローチャートの図。矢印キーでスクロールできます"></div>
+    <div class="flow-scroll" id="flow-frame" tabindex="0" role="group" aria-label="フローチャートの図。拡大したときは矢印キーでスクロールできます"><div class="flow-in" id="flow"></div></div>
   </section>
 
 </main>

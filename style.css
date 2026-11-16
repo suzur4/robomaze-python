@@ -119,8 +119,8 @@ code { background: var(--color-paper-3); padding-inline: var(--space-2xs); white
 .speed select { height: 40px; padding-inline: var(--space-xs); border: var(--rule-bar) solid var(--color-ink); border-radius: 0; background: var(--color-paper-3); color: var(--color-ink); }
 
 /* ---------- 盤面 ---------- */
-.world { display: grid; place-items: center; min-height: 250px; padding: var(--space-md); background: var(--color-paper-2); border: var(--rule-bar) solid var(--color-ink); position: relative; }
-.world svg.maze { width: 100%; height: auto; max-height: 420px; }
+.world { display: flex; min-height: 250px; max-height: 70svh; overflow: auto; padding: var(--space-md); background: var(--color-paper-2); border: var(--rule-bar) solid var(--color-ink); position: relative; }
+.world svg.maze { height: auto; }
 .maze .tile { fill: var(--color-paper-3); stroke: var(--color-ink); stroke-width: 2; }
 .maze .tile.goal { fill: var(--color-accent-ink); stroke-width: 4; }
 .maze .cap { font-family: var(--font-body); font-size: 12px; font-weight: 700; fill: var(--color-ink); text-anchor: middle; }
@@ -143,7 +143,7 @@ code { background: var(--color-paper-3); padding-inline: var(--space-2xs); white
 .maze .cross.show { opacity: 1; }
 .maze .broken { font-family: var(--font-body); font-size: 12px; font-weight: 700; fill: var(--color-ink); }
 
-.pad { position: relative; width: min(100%, 440px); aspect-ratio: 1; overflow: hidden; background: var(--color-accent-ink); border: var(--rule-hair) solid var(--color-ink); }
+.pad { position: relative; width: 440px; aspect-ratio: 1; overflow: hidden; background: var(--color-accent-ink); border: var(--rule-hair) solid var(--color-ink); }
 .pad canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .pad .marker { position: absolute; left: 0; top: 0; width: 22px; height: 22px; pointer-events: none; fill: var(--color-ink); }
 
@@ -183,9 +183,9 @@ code { background: var(--color-paper-3); padding-inline: var(--space-2xs); white
 .legend .k-proc { background: var(--color-accent); color: var(--color-accent-ink); }
 .legend .k-loop { background: var(--color-accent-3); color: var(--color-ink); }
 .legend .k-if { background: var(--color-accent-2-deep); color: var(--color-accent-ink); }
-.flow-scroll { overflow: auto; max-height: 560px; }
-.flow-scroll svg { margin: 0 auto; }
-.flow-scroll.stale svg { opacity: 0.4; }
+.flow-scroll { overflow: auto; }
+.flow-in { width: fit-content; margin-inline: auto; }
+.flow-in.stale svg { opacity: 0.4; }
 .fc-shape { stroke: var(--color-ink); stroke-width: 2; fill: var(--color-paper-3); }
 .fc-shape.k-proc { fill: var(--color-accent); }
 .fc-shape.k-loop { fill: var(--color-accent-3); }
@@ -244,3 +244,9 @@ code { background: var(--color-paper-3); padding-inline: var(--space-2xs); white
 .scrub { display: flex; align-items: center; gap: var(--space-xs); flex-wrap: wrap; }
 .scrub input[type="range"] { flex: 1 1 160px; min-width: 0; accent-color: var(--color-ink); height: 32px; }
 #st-title { text-transform: none; }
+
+/* ---------- 拡大縮小 ---------- */
+.world-in { margin: auto; width: 100%; display: grid; place-items: center; }
+.world-in.fixed { width: max-content; }
+.zoom { display: flex; align-items: center; gap: var(--space-2xs); flex-wrap: wrap; }
+.zoom-val { min-width: 48px; text-align: center; font-size: var(--text-sm); font-weight: 700; font-variant-numeric: tabular-nums; }
