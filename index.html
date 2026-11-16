@@ -22,10 +22,21 @@
     </svg>
     <h1>ロボ迷路 Python</h1>
   </div>
-  <nav class="steps lessons" id="lessons" aria-label="時間"></nav>
+  <button type="button" class="btn small toc-btn" id="toc-btn" aria-expanded="false" aria-controls="toc">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3.5h12M2 8h12M2 12.5h12" stroke="currentColor" stroke-width="2"></path></svg>
+    <span>目次</span><span class="toc-now" id="toc-now"></span>
+  </button>
   <nav class="steps" id="steps" aria-label="ステップ"></nav>
   <button type="button" class="btn small" id="big" aria-pressed="false">文字を大きく</button>
 </header>
+
+<aside class="toc" id="toc" aria-labelledby="toc-title" hidden>
+  <div class="toc-head">
+    <h2 id="toc-title">目次</h2>
+    <button type="button" class="btn small" id="toc-close">閉じる</button>
+  </div>
+  <nav id="lessons" aria-label="すべての時間とステップ"></nav>
+</aside>
 
 <section class="guide container" aria-labelledby="st-head">
   <div class="guide-head">

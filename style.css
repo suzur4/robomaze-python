@@ -220,9 +220,27 @@ code { background: var(--color-paper-3); padding-inline: var(--space-2xs); white
 }
 #big { margin-left: auto; }
 
-/* ---------- 時間の切りかえ ---------- */
-.lessons .step .num { background: var(--color-paper-2); }
-.lessons .step.current .num { background: var(--color-paper-3); }
+/* ---------- 目次（開け閉め） ---------- */
+.toc-btn { gap: var(--space-xs); }
+.toc-btn svg { width: 16px; height: 16px; flex: none; }
+.toc-now { font-weight: 500; padding-left: var(--space-xs); border-left: var(--rule-hair) solid currentColor; }
+.toc {
+  position: fixed; inset-block: 0; left: 0; z-index: 20; width: min(300px, 86vw); box-sizing: border-box;
+  display: flex; flex-direction: column; gap: var(--space-md); padding: var(--space-md);
+  background: var(--color-paper); border-right: var(--rule-bar) solid var(--color-ink); overflow-y: auto; overscroll-behavior: contain;
+}
+.toc[hidden] { display: none; }
+.toc-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); padding-bottom: var(--space-sm); border-bottom: var(--rule-bar) solid var(--color-ink); }
+.toc-head h2 { font-size: var(--text-xl); }
+.toc nav { display: flex; flex-direction: column; gap: var(--space-lg); }
+.toc-lesson { display: flex; flex-direction: column; gap: var(--space-xs); }
+.toc-lesson h3 { font-size: var(--text-md); }
+.toc-lesson.now h3 { text-decoration: underline; text-decoration-thickness: var(--rule-bar); text-underline-offset: 6px; }
+.toc-list { list-style: none; margin: 0; padding: var(--rule-bar); display: flex; flex-direction: column; gap: var(--rule-bar); background: var(--color-ink); }
+.toc-list .step { width: 100%; }
+@media (min-width: 1700px) {
+  html.toc-open body { padding-left: 300px; }
+}
 
 /* ---------- 変数の箱 ---------- */
 .trace { width: 100%; align-self: start; display: flex; flex-direction: column; gap: var(--space-sm); }

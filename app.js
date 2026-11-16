@@ -1221,15 +1221,27 @@ function updateFlow() {
 function renderSteps() {
   ui.lessons.textContent = "";
   for (const [n, name] of LESSONS) {
-    const b = h("button", "step lesson" + (n === stage.lesson ? " current" : ""));
-    b.type = "button";
-    b.appendChild(h("span", "num", String(n)));
-    b.appendChild(h("span", "", name));
-    b.setAttribute("aria-label", `第${n}時 ${name}`);
-    if (n === stage.lesson) b.setAttribute("aria-current", "page");
-    b.addEventListener("click", () => openStage(STAGES.find((s) => s.lesson === n).id, true));
-    ui.lessons.appendChild(b);
+    const sec = h("section", "toc-lesson" + (n === stage.lesson ? " now" : ""));
+    sec.appendChild(h("h3", "", `第${n}時　${name}`));
+    const ol = h("ol", "toc-list");
+    for (const s of STAGES.filter((x) => x.lesson === n)) {
+      const done = store.data.cleared[s.id];
+      const li = h("li", "");
+      const b = h("button", "step" + (s === stage ? " current" : "") + (done ? " cleared" : ""));
+      b.type = "button";
+      b.appendChild(h("span", "num", done ? "✓" : String(s.n)));
+      b.appendChild(h("span", "", s.tab));
+      if (s.hue) b.dataset.hue = s.hue;
+      if (s === stage) b.setAttribute("aria-current", "page");
+      b.setAttribute("aria-label", `第${n}時 ステップ${s.n} ${s.tab}${done ? "（クリア済み）" : ""}`);
+      b.addEventListener("click", () => { openStage(s.id, true); if (!tocDocked()) setToc(false, true); });
+      li.appendChild(b); ol.appendChild(li);
+    }
+    sec.appendChild(ol);
+    ui.lessons.appendChild(sec);
   }
+  const cur = LESSONS.find(([n]) => n === stage.lesson);
+  $("toc-now").textContent = cur ? `第${cur[0]}時 ${cur[1]}` : "";
   ui.steps.textContent = "";
   for (const s of STAGES.filter((x) => x.lesson === stage.lesson)) {
     const done = store.data.cleared[s.id];
@@ -1308,6 +1320,27 @@ window.addEventListener("hashchange", () => {
   if (id != null && id !== stage.id) openStage(id, false);
 });
 
+/* ------------------------------------------------------------------ 目次（開け閉め） */
+const toc = $("toc"), tocBtn = $("toc-btn");
+const wide = window.matchMedia("(min-width: 1700px)");
+function tocDocked() { return wide.matches; }
+function setToc(open, focusBack) {
+  toc.hidden = !open;
+  tocBtn.setAttribute("aria-expanded", String(open));
+  document.documentElement.classList.toggle("toc-open", open);
+  if (tocDocked()) { store.data.toc = open; store.save(); }
+  if (open) (toc.querySelector(".step.current") || $("toc-close")).focus({ preventScroll: false });
+  else if (focusBack) tocBtn.focus();
+}
+tocBtn.addEventListener("click", () => setToc(toc.hidden, false));
+$("toc-close").addEventListener("click", () => setToc(false, true));
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape" && !toc.hidden && !tocDocked() && ev.target !== ui.code) setToc(false, true);
+});
+document.addEventListener("pointerdown", (ev) => {
+  if (!toc.hidden && !tocDocked() && !toc.contains(ev.target) && !tocBtn.contains(ev.target)) setToc(false, false);
+});
+
 const big = $("big");
 function setBig(on) {
   document.documentElement.classList.toggle("big", on);
@@ -1333,6 +1366,7 @@ window.addEventListener("resize", () => { flowZoom.refit(); worldZoom.refit(); }
 
 (function init() {
   if (store.data.big) setBig(true);
+  if (store.data.toc && tocDocked()) { toc.hidden = false; tocBtn.setAttribute("aria-expanded", "true"); document.documentElement.classList.add("toc-open"); }
   openStage(parseHash() ?? store.data.last ?? 1, false);
   worldZoom.refit();
   boot();
