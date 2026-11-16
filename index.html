@@ -23,6 +23,7 @@
     <h1>ロボ迷路 Python</h1>
   </div>
   <nav class="steps" id="steps" aria-label="ステップ"></nav>
+  <button type="button" class="btn small" id="big" aria-pressed="false">文字を大きく</button>
 </header>
 
 <section class="guide container" aria-labelledby="st-head">
@@ -63,10 +64,11 @@
       <div class="code-wrap">
         <div class="hl" id="hl" hidden></div>
         <label class="sr-only" for="code">プログラム</label>
-        <textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off"></textarea>
+        <textarea id="code" lang="en" translate="no" aria-describedby="key-help" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off"></textarea>
       </div>
     </div>
 
+    <p class="help" id="key-help">Ctrl + Enter（Mac は ⌘ + Enter）でも実行できます。Tab は字下げです。キーボードでこの欄から出るときは、Esc を押してから Tab を押します。</p>
     <div class="tools" id="tools" aria-label="命令を入れるボタン"></div>
   </section>
 
@@ -90,7 +92,7 @@
         <li class="k-if">選択</li>
       </ul>
     </div>
-    <div class="flow-scroll" id="flow"></div>
+    <div class="flow-scroll" id="flow" tabindex="0" role="group" aria-label="フローチャートの図。矢印キーでスクロールできます"></div>
   </section>
 
 </main>

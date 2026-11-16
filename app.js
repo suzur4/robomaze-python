@@ -160,8 +160,11 @@ function h(tag, cls, text) {
   if (text != null) e.textContent = text;
   return e;
 }
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const LH = 26, PAD = 12;
+const sleep = (ms) => (skip ? Promise.resolve() : new Promise((r) => setTimeout(r, ms)));
+const PAD = 12;
+let LH = 26; // エディタの1行の高さ。文字サイズを変えたら測り直す
+let skip = false; // 再生を最後まで飛ばす
+let playing = false;
 
 let stage = STAGES[0];
 let py = null;            // { run_maze, run_draw, flow }
@@ -187,6 +190,7 @@ function insertText(text) {
   if (!done) ui.code.setRangeText(text, ui.code.selectionStart, ui.code.selectionEnd, "end");
 }
 function refreshGutter() {
+  LH = parseFloat(getComputedStyle(ui.code).lineHeight) || 26;
   const n = ui.code.value.split("\n").length;
   if (ui.gutter.childElementCount !== n) {
     ui.gutter.textContent = "";
@@ -228,8 +232,12 @@ ui.code.addEventListener("scroll", () => {
   ui.gutter.scrollTop = ui.code.scrollTop;
   if (marked) ui.hl.style.top = PAD + (marked.line - 1) * LH - ui.code.scrollTop + "px";
 });
+let tabOut = false;
 ui.code.addEventListener("keydown", (ev) => {
   if (ev.isComposing) return;
+  if (ev.key === "Escape") { tabOut = true; return; }
+  if (ev.key === "Tab" && tabOut) { tabOut = false; return; }
+  tabOut = false;
   const ta = ui.code, v = ta.value, a = ta.selectionStart, b = ta.selectionEnd;
   if ((ev.ctrlKey || ev.metaKey) && ev.key === "Enter") { ev.preventDefault(); run(); return; }
   if (ev.key === "Tab" && !ev.shiftKey && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
@@ -487,8 +495,13 @@ function buildPad() {
 /* ------------------------------------------------------------------ 実行と再生 */
 const DOOR_TEXT = { closed: "閉まっている", open: "開いている" };
 
+function setPlaying(on) {
+  playing = on; skip = false;
+  ui.runLabel.textContent = on ? "結果へ進む" : "実行";
+}
 async function run() {
   if (!py) return;
+  if (playing) { skip = true; return; }
   const token = ++runToken;
   const code = ui.code.value;
   markLine(null);
@@ -511,8 +524,10 @@ async function run() {
     const res = JSON.parse(py.run_draw(code));
     last = { results: { only: res }, shown: "only" };
     setResult("idle", [h("p", "", "実行中")]);
+    setPlaying(true);
     await replayDraw(res, token);
     if (token !== runToken) return;
+    setPlaying(false);
     finishRun();
   }
 }
@@ -523,6 +538,7 @@ async function showCase(key, token) {
   const label = stage.door ? `ドアが${DOOR_TEXT[key]}場合を実行中` : "実行中";
   setResult("idle", [h("p", "", label)]);
   world.reset(res.doorStart);
+  setPlaying(true);
   await sleep(160);
   const ms = Number(ui.speed.value);
   document.documentElement.style.setProperty("--dur", Math.round(ms * 0.9) + "ms");
@@ -532,6 +548,7 @@ async function showCase(key, token) {
     await world.play(a, ms);
   }
   if (token !== runToken) return;
+  setPlaying(false);
   finishRun();
 }
 
@@ -555,7 +572,7 @@ async function replayDraw(res, token) {
       for (let j = i; j < end; j++) world.draw(acts[j]);
       world.place();
       markLine(acts[end - 1][acts[end - 1].length - 1]);
-      await new Promise((r) => requestAnimationFrame(r));
+      if (!skip) await new Promise((r) => requestAnimationFrame(r));
     }
   }
   world.finish(res.end);
@@ -807,6 +824,7 @@ function renderSteps() {
 function openStage(id, setHash) {
   stage = STAGES.find((s) => s.id === id) || STAGES[0];
   runToken++;
+  if (py) setPlaying(false);
   last = null; flowInfo = null;
   store.data.last = stage.id; store.save();
   if (setHash && location.hash !== "#step-" + stage.id) { try { history.replaceState(null, "", "#step-" + stage.id); } catch (e) { location.hash = "step-" + stage.id; } }
@@ -850,13 +868,27 @@ function openStage(id, setHash) {
 }
 
 ui.run.addEventListener("click", run);
-ui.reset.addEventListener("click", () => setCode(stage.code));
+ui.reset.addEventListener("click", () => {
+  runToken++; if (py) setPlaying(false);
+  setCode(stage.code);
+  setResult("idle", [h("p", "", "最初のプログラムに戻しました。まちがえて押したときは、Ctrl + Z（Mac は ⌘ + Z）で取り消せます。")]);
+});
 window.addEventListener("hashchange", () => {
   const m = location.hash.match(/^#step-(\d+)$/);
   if (m && Number(m[1]) !== stage.id) openStage(Number(m[1]), false);
 });
 
+const big = $("big");
+function setBig(on) {
+  document.documentElement.classList.toggle("big", on);
+  big.setAttribute("aria-pressed", String(on));
+  store.data.big = on; store.save();
+  refreshGutter();
+}
+big.addEventListener("click", () => setBig(big.getAttribute("aria-pressed") !== "true"));
+
 (function init() {
+  if (store.data.big) setBig(true);
   const m = location.hash.match(/^#step-(\d+)$/);
   openStage(m ? Number(m[1]) : store.data.last || 1, false);
   boot();
