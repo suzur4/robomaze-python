@@ -7,36 +7,39 @@
 <meta name="description" content="ロボットを動かしながら、順次・くり返し・場合分けを学ぶ情報Ⅰの教材。ブラウザだけで Python が動きます。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=M+PLUS+1+Code:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Maru+Gothic:wght@700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@700&family=M+PLUS+1+Code:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<header class="top">
+<header class="top container">
   <div class="brand">
     <svg class="brand-mark" viewBox="-20 -20 40 40" aria-hidden="true">
-      <rect x="-15" y="-15" width="30" height="30" rx="8" fill="#f5a524" stroke="#b86e00" stroke-width="2"></rect>
-      <rect x="1" y="-10" width="11" height="20" rx="4" fill="#18212f"></rect>
-      <circle cx="7" cy="-4.5" r="2.4" fill="#fff"></circle>
-      <circle cx="7" cy="4.5" r="2.4" fill="#fff"></circle>
+      <rect class="bot-body" x="-17" y="-17" width="34" height="34"></rect>
+      <rect class="bot-face" x="3" y="-11" width="10" height="22"></rect>
+      <rect class="bot-body" x="6" y="-7" width="4" height="5"></rect>
+      <rect class="bot-body" x="6" y="2" width="4" height="5"></rect>
     </svg>
     <h1>ロボ迷路 Python</h1>
   </div>
   <nav class="steps" id="steps" aria-label="ステップ"></nav>
-  <div class="status" id="py-status" role="status">Python を準備中</div>
 </header>
 
-<section class="guide" aria-labelledby="st-title">
+<section class="guide container" aria-labelledby="st-head">
   <div class="guide-head">
-    <p class="kicker" id="st-kicker"></p>
-    <h2 id="st-title"></h2>
+    <h2 id="st-head"><span class="num" id="st-num"></span><span id="st-title"></span></h2>
+    <p class="ref" id="st-kicker"></p>
   </div>
   <div class="body" id="st-body"></div>
 </section>
 
-<main class="layout">
+<main class="layout container">
 
-  <section class="col write" aria-label="プログラム">
+  <section class="col write" aria-labelledby="write-title">
+    <div class="col-head">
+      <h3 id="write-title">プログラム</h3>
+      <div class="status" id="py-status" role="status">Python を準備中</div>
+    </div>
     <div class="samples" id="samples" hidden></div>
 
 
@@ -67,7 +70,8 @@
     <div class="tools" id="tools" aria-label="命令を入れるボタン"></div>
   </section>
 
-  <section class="col stage" aria-label="ロボットの画面">
+  <section class="col stage" aria-labelledby="stage-title">
+    <h3 id="stage-title">ロボット</h3>
     <div class="world" id="world"></div>
     <div class="result idle" id="result" role="status" aria-live="polite"></div>
     <div class="output" id="output-box" hidden>
@@ -80,13 +84,18 @@
     <div class="flow-head">
       <h3 id="flow-title">フローチャート</h3>
       <p id="flow-note">プログラムを書きかえると、図も変わります。</p>
+      <ul class="legend" aria-label="色の意味">
+        <li class="k-proc">順次</li>
+        <li class="k-loop">反復</li>
+        <li class="k-if">選択</li>
+      </ul>
     </div>
     <div class="flow-scroll" id="flow"></div>
   </section>
 
 </main>
 
-<footer class="foot">
+<footer class="foot container">
   <p>情報Ⅰ「アルゴリズムとプログラミング」の授業用教材です。進み具合とプログラムは、この端末のブラウザにだけ保存されます。</p>
 </footer>
 

@@ -17,6 +17,8 @@
 
 迷路とロボットの絵は自作で、教科書の図は使っていない。
 
+画面の青・黄・赤は、順次・反復・選択の3つの構造を表す。フローチャート、ステップの番号、命令ボタンで同じ色を使っている。
+
 ## 手元で動かす
 
 `index.html` をダブルクリックしても動かない（ブラウザが Python 本体を読み込めない）。
@@ -39,6 +41,7 @@ python3 -m http.server 8000
 ## ファイル
 
 - `index.html` / `style.css` / `app.js` … 画面
+- `tokens.css` / `base.css` … 色・書体・余白の決まりと、全ページ共通の基本スタイル
 - `robot.py` … Python 側。生徒のプログラムを実行して、ロボットの動きを記録する
 - `pyodide/` … ブラウザで動く Python 本体（Pyodide 314.0.8、約13MB）。
   このフォルダを消すと、同じ版を CDN（jsDelivr）から読み込む
@@ -65,4 +68,4 @@ python3 -m http.server 8000
 ## 使っているもの
 
 - [Pyodide](https://pyodide.org/)（Mozilla Public License 2.0）
-- Google Fonts: Zen Kaku Gothic New、Zen Maru Gothic、M PLUS 1 Code（SIL Open Font License）
+- Google Fonts: Jost、Zen Kaku Gothic New、M PLUS 1 Code（SIL Open Font License）

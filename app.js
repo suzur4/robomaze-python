@@ -30,7 +30,7 @@ const TOOL = {
 const STAGES = [
   {
     id: 1, tab: "順番", kind: "maze",
-    kicker: "ステップ1・順次構造（教科書 p.164）",
+    kicker: "順次構造　教科書 p.164", hue: "seq",
     title: "命令を上から順に並べる",
     body: `
       <p><code>forward()</code> は「1マス前に進む」という命令です。コンピュータは、書かれた命令を上から1行ずつ実行します。</p>
@@ -41,7 +41,7 @@ const STAGES = [
   },
   {
     id: 2, tab: "くり返し", kind: "maze",
-    kicker: "ステップ2・反復構造（教科書 p.164）",
+    kicker: "反復構造　教科書 p.164", hue: "loop",
     title: "同じ命令は、くり返しにまとめる",
     body: `
       <p>通路が8マスになりました。<code>forward()</code> を8行書いても進めますが、<code>for</code> を使うと2行で書けます。</p>
@@ -55,7 +55,7 @@ const STAGES = [
   },
   {
     id: 3, tab: "場合分け", kind: "maze", door: true,
-    kicker: "ステップ3・選択構造（教科書 p.164〜165）",
+    kicker: "選択構造　教科書 p.164〜165", hue: "sel",
     title: "場合によって、することを変える",
     body: `
       <p>ゴールにドアが付きました。ドアは開いていることも閉まっていることもあり、前まで行かないとわかりません。開いているドアを開けようとすると、ロボットは空振りして止まります。</p>
@@ -69,7 +69,7 @@ const STAGES = [
   },
   {
     id: 4, tab: "自分で解く", kind: "maze", door: true,
-    kicker: "ステップ4・3つの構造を組み合わせる（教科書 p.165 確認問題）",
+    kicker: "3つの構造を組み合わせる　教科書 p.165 確認問題",
     title: "道順を設計して、自分で書く",
     body: `
       <p>ここからは手本がありません。先に道順を紙に書き（設計）、プログラムにして（コーディング）、実行して確かめます（テスト）。教科書 p.166 の3つの手順です。</p>
@@ -82,7 +82,7 @@ const STAGES = [
   },
   {
     id: 5, tab: "チャレンジ", kind: "maze", door: true, disabled: ["right"],
-    kicker: "ステップ5・チャレンジ（教科書 p.165 確認問題の後半）",
+    kicker: "チャレンジ　教科書 p.165 確認問題の後半",
     title: "右に向けないロボット",
     body: `
       <p>このロボットは <code>right()</code> が故障していて使えません。</p>
@@ -93,7 +93,7 @@ const STAGES = [
   },
   {
     id: 6, tab: "模様", kind: "draw",
-    kicker: "ステップ6・発展",
+    kicker: "発展",
     title: "マスのない広場で、模様を描く",
     body: `
       <p>ここにはマスがありません。<code>forward(100)</code> は「100 進む」、<code>left(90)</code> は「左に 90° 回る」です。ロボットが通ったあとに線が残ります。</p>
@@ -109,7 +109,7 @@ const STAGES = [
   },
   {
     id: 7, tab: "フラクタル", kind: "draw",
-    kicker: "ステップ7・まとめ",
+    kicker: "まとめ",
     title: "短い規則から、複雑な形が生まれる",
     body: `
       <p>このプログラムが使っているのは、これまでと同じ3つの構造です。3つの頂点から1つを乱数で選び（場合分け）、今の場所とその頂点の真ん中に点を打ちます。これを3000回くり返します。</p>
@@ -141,7 +141,7 @@ const store = (() => {
 /* ------------------------------------------------------------------ 要素 */
 const $ = (id) => document.getElementById(id);
 const ui = {
-  steps: $("steps"), status: $("py-status"), kicker: $("st-kicker"), title: $("st-title"), body: $("st-body"),
+  steps: $("steps"), status: $("py-status"), kicker: $("st-kicker"), title: $("st-title"), num: $("st-num"), body: $("st-body"),
   samples: $("samples"), tools: $("tools"), gutter: $("gutter"), hl: $("hl"), code: $("code"),
   run: $("run"), runLabel: $("run-label"), speed: $("speed"), reset: $("reset"),
   world: $("world"), result: $("result"), outBox: $("output-box"), out: $("output"),
@@ -161,7 +161,7 @@ function h(tag, cls, text) {
   return e;
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const LH = 26, PAD = 10;
+const LH = 26, PAD = 12;
 
 let stage = STAGES[0];
 let py = null;            // { run_maze, run_draw, flow }
@@ -211,8 +211,8 @@ function markLine(line, err) {
     }
     ui.hl.style.top = top - ui.code.scrollTop + "px";
   }
-  for (const s of ui.flow.querySelectorAll(".fc-shape.on")) s.classList.remove("on");
-  if (line && !err) for (const s of ui.flow.querySelectorAll(`.fc-shape[data-line="${line}"]`)) s.classList.add("on");
+  for (const s of ui.flow.querySelectorAll(".on")) s.classList.remove("on");
+  if (line && !err) for (const s of ui.flow.querySelectorAll(`[data-line="${line}"]`)) s.classList.add("on");
 }
 let flowTimer = 0;
 function onEdit() {
@@ -327,7 +327,7 @@ function buildMaze(st) {
   const tiles = svg("g", {}, root);
   rows.forEach((row, y) => [...row].forEach((ch, x) => {
     if (ch === "#") return;
-    svg("rect", { class: "tile" + (ch === "S" ? " start" : ch === "G" ? " goal" : ""), x: x * CELL + 3, y: y * CELL + 3, width: CELL - 6, height: CELL - 6, rx: 8 }, tiles);
+    svg("rect", { class: "tile" + (ch === "S" ? " start" : ch === "G" ? " goal" : ""), x: x * CELL, y: y * CELL, width: CELL, height: CELL }, tiles);
     if (ch === "S") { sx = x; sy = y; }
     if (ch === "G") { gx = x; gy = y; }
   }));
@@ -335,8 +335,8 @@ function buildMaze(st) {
   svg("text", { class: "cap", x: cx(sx), y: sy * CELL - 5 }, root).textContent = "スタート";
   // ゴールの旗
   const flag = svg("g", { transform: `translate(${cx(gx)},${cy(gy)})` }, root);
-  svg("line", { x1: -8, y1: -15, x2: -8, y2: 16, stroke: "#18212f", "stroke-width": 2.5, "stroke-linecap": "round" }, flag);
-  svg("path", { d: "M-8 -15 L13 -8 L-8 -1 Z", fill: "#2a52d9" }, flag);
+  svg("line", { class: "flag-pole", x1: -8, y1: -15, x2: -8, y2: 16 }, flag);
+  svg("path", { class: "flag", d: "M-8 -15 L13 -8 L-8 -1 Z" }, flag);
   const trail = svg("g", {}, root);
 
   // ドア: ゴールと、その手前のマスの境目に置く
@@ -356,8 +356,8 @@ function buildMaze(st) {
     const inward = ax === gx ? (gy > ay ? 1 : -1) : (gx < ax ? 1 : -1);
     door.style.setProperty("--swing", inward * 84 + "deg");
     const q = svg("g", { class: "door-q", transform: `rotate(${ax === gx ? 0 : -90})` }, door);
-    svg("circle", { r: 10, fill: "#18212f" }, q);
-    const qt = svg("text", { "text-anchor": "middle", "dominant-baseline": "central", fill: "#fff", "font-size": 13, "font-weight": 700 }, q);
+    svg("rect", { class: "door-q-box", x: -10, y: -10, width: 20, height: 20 }, q);
+    const qt = svg("text", { class: "door-q-text", "text-anchor": "middle", "dominant-baseline": "central" }, q);
     qt.textContent = "?";
   }
   if (st.disabled && st.disabled.length) {
@@ -367,18 +367,18 @@ function buildMaze(st) {
   const robot = svg("g", { class: "robot" }, root);
   robot.style.transformOrigin = "0 0";
   const inner = svg("g", {}, robot);
-  svg("rect", { x: -19, y: -21, width: 12, height: 6, rx: 3, fill: "#18212f" }, inner);
-  svg("rect", { x: -19, y: 15, width: 12, height: 6, rx: 3, fill: "#18212f" }, inner);
-  svg("rect", { x: -17, y: -17, width: 34, height: 34, rx: 9, fill: "#f5a524", stroke: "#b86e00", "stroke-width": 2 }, inner);
-  svg("rect", { x: 2, y: -11, width: 12, height: 22, rx: 5, fill: "#18212f" }, inner);
-  svg("circle", { cx: 8.5, cy: -5, r: 2.6, fill: "#fff" }, inner);
-  svg("circle", { cx: 8.5, cy: 5, r: 2.6, fill: "#fff" }, inner);
+  svg("rect", { class: "bot-body", x: -19, y: -22, width: 14, height: 6 }, inner);
+  svg("rect", { class: "bot-body", x: -19, y: 16, width: 14, height: 6 }, inner);
+  svg("rect", { class: "bot-body", x: -17, y: -17, width: 34, height: 34 }, inner);
+  svg("rect", { class: "bot-face", x: 3, y: -11, width: 10, height: 22 }, inner);
+  svg("rect", { class: "bot-body", x: 6, y: -7, width: 4, height: 5 }, inner);
+  svg("rect", { class: "bot-body", x: 6, y: 2, width: 4, height: 5 }, inner);
 
   const cross = svg("g", { class: "cross" }, root);
   svg("line", { x1: -9, y1: -9, x2: 9, y2: 9 }, cross);
   svg("line", { x1: 9, y1: -9, x2: -9, y2: 9 }, cross);
   const bubble = svg("g", { class: "bubble" }, root);
-  const brect = svg("rect", { x: -52, y: -13, width: 104, height: 26, rx: 13 }, bubble);
+  const brect = svg("rect", { x: -52, y: -13, width: 104, height: 26 }, bubble);
   const btext = svg("text", { y: 4.5 }, bubble);
 
   let x = sx, y = sy, ang = (st.dir || 0) * 90, dir = st.dir || 0, doorOpen = false;
@@ -400,7 +400,7 @@ function buildMaze(st) {
     },
     async play(a, ms) {
       if (a.t === "move") {
-        svg("circle", { class: "trail", cx: cx(x), cy: cy(y), r: 4 }, trail);
+        svg("rect", { class: "trail", x: cx(x) - 3, y: cy(y) - 3, width: 6, height: 6 }, trail);
         x = a.x; y = a.y; place();
         await sleep(ms);
         if (x === ax && y === ay) showDoor();
@@ -442,13 +442,14 @@ const PADSIZE = 440;
 function buildPad() {
   const pad = h("div", "pad");
   const canvas = document.createElement("canvas");
+  canvas.setAttribute("role", "img"); canvas.setAttribute("aria-label", "ロボットが描いた模様");
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = PADSIZE * dpr; canvas.height = PADSIZE * dpr;
   const ctx = canvas.getContext("2d");
   ctx.scale(dpr, dpr);
   pad.appendChild(canvas);
-  const marker = svg("svg", { class: "marker", viewBox: "-11 -11 22 22" });
-  svg("path", { d: "M9 0 L-7 7 L-3 0 L-7 -7 Z", fill: "#f5a524", stroke: "#b86e00", "stroke-width": 1.5, "stroke-linejoin": "round" }, marker);
+  const marker = svg("svg", { class: "marker", viewBox: "-11 -11 22 22", "aria-hidden": "true" });
+  svg("path", { d: "M9 0 L-7 7 L-3 0 L-7 -7 Z" }, marker);
   pad.appendChild(marker);
   ui.world.textContent = "";
   ui.world.appendChild(pad);
@@ -458,20 +459,20 @@ function buildPad() {
   const place = () => {
     marker.style.left = (X(px) / PADSIZE) * 100 + "%";
     marker.style.top = (Y(pyy) / PADSIZE) * 100 + "%";
-    marker.style.transform = `rotate(${-ph}deg)`;
+    marker.style.transform = `translate(-50%, -50%) rotate(${-ph}deg)`;
   };
   const api = {
     reset() { ctx.clearRect(0, 0, PADSIZE, PADSIZE); px = 0; pyy = 0; ph = 0; place(); },
     draw(a) {
       const t = a[0];
       if (t === "L") {
-        ctx.strokeStyle = "#18212f"; ctx.strokeStyle = a[5]; ctx.lineWidth = a[6]; ctx.lineCap = "round";
+        ctx.strokeStyle = "#161412"; ctx.strokeStyle = a[5]; ctx.lineWidth = a[6]; ctx.lineCap = "round";
         ctx.beginPath(); ctx.moveTo(X(a[1]), Y(a[2])); ctx.lineTo(X(a[3]), Y(a[4])); ctx.stroke();
         px = a[3]; pyy = a[4];
       } else if (t === "M") { px = a[1]; pyy = a[2]; }
       else if (t === "T") { ph = a[1]; }
       else if (t === "D") {
-        ctx.fillStyle = "#18212f"; ctx.fillStyle = a[3];
+        ctx.fillStyle = "#161412"; ctx.fillStyle = a[3];
         ctx.beginPath(); ctx.arc(X(a[1]), Y(a[2]), a[4] / 2, 0, Math.PI * 2); ctx.fill();
         px = a[1]; pyy = a[2];
       }
@@ -675,7 +676,11 @@ function fcLine(g, pts, arrow) {
   const e = svg("polyline", { class: "fc-line", points: pts.map((p) => p.join(",")).join(" ") }, g);
   if (arrow) e.setAttribute("marker-end", "url(#fc-arrow)");
 }
-function fcText(g, x, y, s, w) { svg("text", { class: "fc-text", x, y }, g).textContent = fit(s, w); }
+function fcText(g, x, y, s, w, n) {
+  const t = svg("text", { class: "fc-text k-" + ((n && n.k) || "proc"), x, y }, g);
+  if (n && n.line) t.dataset.line = n.line;
+  t.textContent = fit(s, w);
+}
 function fcLeaf(n) {
   const w = boxW(n.text), H = FC.H;
   return {
@@ -684,13 +689,13 @@ function fcLeaf(n) {
       let e;
       if (n.k === "io") e = svg("polygon", { points: `${x - w / 2 + 10},${y} ${x + w / 2},${y} ${x + w / 2 - 10},${y + H} ${x - w / 2},${y + H}` }, g);
       else e = svg("rect", { x: x - w / 2, y, width: w, height: H, rx: n.k === "term" ? H / 2 : 2 }, g);
-      e.setAttribute("class", "fc-shape" + (n.k === "term" ? " term" : ""));
+      e.setAttribute("class", "fc-shape k-" + n.k);
       if (n.line) e.dataset.line = n.line;
       if (n.k === "def") {
         fcLine(g, [[x - w / 2 + 8, y], [x - w / 2 + 8, y + H]]);
         fcLine(g, [[x + w / 2 - 8, y], [x + w / 2 - 8, y + H]]);
       }
-      fcText(g, x, y + H / 2, n.text, w - (n.k === "def" ? 12 : 0));
+      fcText(g, x, y + H / 2, n.text, w - (n.k === "def" ? 12 : 0), n);
     },
   };
 }
@@ -717,13 +722,13 @@ function fcLoop(n) {
     l: Math.max(w / 2, body.l), r: Math.max(w / 2, body.r), h: hh,
     draw(g, x, y) {
       const a = x - w / 2, b = x + w / 2;
-      const top = svg("polygon", { class: "fc-shape loop", points: `${a + c},${y} ${b - c},${y} ${b},${y + c} ${b},${y + H} ${a},${y + H} ${a},${y + c}` }, g);
+      const top = svg("polygon", { class: "fc-shape k-loop", points: `${a + c},${y} ${b - c},${y} ${b},${y + c} ${b},${y + H} ${a},${y + H} ${a},${y + c}` }, g);
       top.dataset.line = n.line;
-      fcText(g, x, y + H / 2 + 1, n.text, w);
+      fcText(g, x, y + H / 2 + 1, n.text, w, n);
       fcLine(g, [[x, y + H], [x, y + H + G]]);
       let cy = y + H + G;
       if (body.h) { body.draw(g, x, cy); cy += body.h; fcLine(g, [[x, cy], [x, cy + G]]); cy += G; }
-      svg("polygon", { class: "fc-shape loop", points: `${a},${cy} ${b},${cy} ${b},${cy + H - c} ${b - c},${cy + H} ${a + c},${cy + H} ${a},${cy + H - c}` }, g);
+      svg("polygon", { class: "fc-shape k-loop", points: `${a},${cy} ${b},${cy} ${b},${cy + H - c} ${b - c},${cy + H} ${a + c},${cy + H} ${a},${cy + H - c}` }, g);
     },
   };
 }
@@ -736,9 +741,9 @@ function fcIf(n) {
   return {
     l: Math.max(dw / 2, yes.l), r: off + (no.h ? no.r : 6), h: hh,
     draw(g, x, y) {
-      const d = svg("polygon", { class: "fc-shape", points: `${x},${y} ${x + dw / 2},${y + DH / 2} ${x},${y + DH} ${x - dw / 2},${y + DH / 2}` }, g);
+      const d = svg("polygon", { class: "fc-shape k-if", points: `${x},${y} ${x + dw / 2},${y + DH / 2} ${x},${y + DH} ${x - dw / 2},${y + DH / 2}` }, g);
       d.dataset.line = n.line;
-      fcText(g, x, y + DH / 2, n.text, dw - 44);
+      fcText(g, x, y + DH / 2, n.text, dw - 44, n);
       svg("text", { class: "fc-yn", x: x + 6, y: y + DH + 13 }, g).textContent = "Yes";
       svg("text", { class: "fc-yn", x: x + dw / 2 + 3, y: y + DH / 2 - 6 }, g).textContent = "No";
       const top = y + DH + G, my = y + hh - 7;
@@ -764,7 +769,7 @@ function renderFlow(nodes) {
   const root = svg("svg", { width: W, height: Hh, viewBox: `0 0 ${W} ${Hh}`, role: "img", "aria-label": "プログラムのフローチャート" });
   const defs = svg("defs", {}, root);
   const mk = svg("marker", { id: "fc-arrow", viewBox: "0 0 8 8", refX: 7, refY: 4, markerWidth: 7, markerHeight: 7, orient: "auto" }, defs);
-  svg("path", { d: "M0 0 L8 4 L0 8 Z", fill: "#18212f" }, mk);
+  svg("path", { class: "fc-head", d: "M0 0 L8 4 L0 8 Z" }, mk);
   seq.draw(root, pad + seq.l, pad);
   ui.flow.textContent = "";
   ui.flow.appendChild(root);
@@ -792,6 +797,7 @@ function renderSteps() {
     b.type = "button";
     b.appendChild(h("span", "num", store.data.cleared[s.id] ? "✓" : String(s.id)));
     b.appendChild(h("span", "", s.tab));
+    if (s.hue) b.dataset.hue = s.hue;
     if (s === stage) b.setAttribute("aria-current", "step");
     b.setAttribute("aria-label", `ステップ${s.id} ${s.tab}${store.data.cleared[s.id] ? "（クリア済み）" : ""}`);
     b.addEventListener("click", () => openStage(s.id, true));
@@ -805,6 +811,7 @@ function openStage(id, setHash) {
   store.data.last = stage.id; store.save();
   if (setHash && location.hash !== "#step-" + stage.id) { try { history.replaceState(null, "", "#step-" + stage.id); } catch (e) { location.hash = "step-" + stage.id; } }
   renderSteps();
+  ui.num.textContent = stage.id;
   ui.kicker.textContent = stage.kicker;
   ui.title.textContent = stage.title;
   ui.body.innerHTML = stage.body; // STAGES に書いた自前の文だけを入れる
@@ -813,7 +820,7 @@ function openStage(id, setHash) {
   if (stage.tools.length) ui.tools.appendChild(h("span", "label", "命令を入れる"));
   for (const key of stage.tools) {
     const [ja, code, block] = TOOL[key];
-    const b = h("button", "chip"); b.type = "button";
+    const b = h("button", "chip" + (key === "for" ? " k-loop" : /^if|^else/.test(key) ? " k-sel" : "")); b.type = "button";
     b.appendChild(h("b", "", ja)); b.appendChild(h("span", "", code));
     b.addEventListener("click", () => insertSnippet(code, block));
     ui.tools.appendChild(b);

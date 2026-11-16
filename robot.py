@@ -153,7 +153,7 @@ class Pen:
         self.y = 0.0
         self.h = 0.0
         self.down = True
-        self.col = "#1d2733"
+        self.col = "#161412"
         self.w = 2
         self.actions = []
 
