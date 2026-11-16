@@ -232,7 +232,7 @@ class Pen:
 
 # ---------------------------------------------------------------- 実行
 
-def _tracer_factory():
+def _tracer_factory(on_line=None):
     count = 0
 
     def tracer(frame, event, arg):
@@ -243,6 +243,8 @@ def _tracer_factory():
             count += 1
             if count > MAX_LINES:
                 raise RobotStop("くり返しが終わりません。while の条件や、くり返しの回数を確認しよう。")
+            if on_line:
+                on_line(frame)
         return tracer
 
     return tracer
@@ -312,9 +314,11 @@ def _describe(e, names, code=""):
     return {"kind": "other", "message": "プログラムの途中でエラーが起きました。", "line": line, "raw": raw}
 
 
-def _execute(code, api):
+def _execute(code, api, on_line=None, env_out=None):
     """生徒のプログラムを実行する。戻り値は (エラー情報 or None, print の出力)。"""
+    global _OUT
     out = io.StringIO()
+    _OUT = out
     env = dict(api)
     env["__name__"] = "__main__"
     env["input"] = _no_input
@@ -328,7 +332,7 @@ def _execute(code, api):
                 err = {"kind": "syntax", "line": node.lineno, "raw": "",
                        "message": f"{node.value.id} のあとに ( ) が必要です。{node.value.id}() と書こう。"}
                 return err, ""
-        sys.settrace(_tracer_factory())
+        sys.settrace(_tracer_factory(on_line))
         try:
             exec(compiled, env)
         finally:
@@ -338,6 +342,8 @@ def _execute(code, api):
     except BaseException as e:  # noqa: BLE001  生徒のプログラムのどんな失敗も画面に出す
         sys.settrace(None)
         err = _describe(e, names, code)
+    if env_out is not None:
+        env_out.update(env)
     return err, out.getvalue()[:4000]
 
 
@@ -382,6 +388,60 @@ def run_draw(code):
     return json.dumps(
         {"status": "error" if err else "done", "actions": p.actions, "error": err, "output": out,
          "end": [round(p.x, 2), round(p.y, 2), round(p.h, 2)]},
+        ensure_ascii=False,
+    )
+
+
+# ---------------------------------------------------------------- 変数の箱
+
+MAX_TRACE = 1500
+_OUT = None
+_SIMPLE = (int, float, str, bool, type(None))
+
+
+def _show(v):
+    """箱に入れて見せられる値だけを返す。見せられないものは None を返す。"""
+    if isinstance(v, _SIMPLE):
+        return {"v": repr(v) if isinstance(v, (str, float)) else str(v)}
+    if isinstance(v, (list, tuple)) and len(v) <= 60 and all(isinstance(x, _SIMPLE) for x in v):
+        return {"list": [repr(x) if isinstance(x, (str, float)) else str(x) for x in v]}
+    return None
+
+
+def _snapshot(d, skip):
+    out = {}
+    for k, v in d.items():
+        if k in skip or k.startswith("_"):
+            continue
+        shown = _show(v)
+        if shown is not None:
+            out[k] = shown
+    return out
+
+
+def run_trace(code):
+    """プログラムを1行ずつ追い、各行の直前の変数の中身を記録する。"""
+    steps = []
+    skip = {"input", "print"}
+    state = {"cut": False}
+
+    def on_line(frame):
+        if len(steps) >= MAX_TRACE:
+            state["cut"] = True
+            return
+        step = {"line": frame.f_lineno, "vars": _snapshot(frame.f_globals, skip),
+                "out": len(_OUT.getvalue()) if _OUT is not None else 0}
+        if frame.f_code.co_name != "<module>":
+            step["fn"] = frame.f_code.co_name
+            step["local"] = _snapshot(frame.f_locals, skip)
+        steps.append(step)
+
+    env = {}
+    err, out = _execute(code, {}, on_line, env)
+    if not err:
+        steps.append({"line": None, "vars": _snapshot(env, skip), "out": len(out)})
+    return json.dumps(
+        {"status": "error" if err else "done", "steps": steps, "error": err, "output": out, "cut": state["cut"]},
         ensure_ascii=False,
     )
 
