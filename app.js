@@ -60,8 +60,8 @@ const STAGES = [
     body: `
       <p>ゴールにドアが付きました。ドアは開いていることも閉まっていることもあり、前まで行かないとわかりません。開いているドアを開けようとすると、ロボットは空振りして止まります。</p>
       <p>実行すると、開いている場合と閉まっている場合の両方でテストされます。まず今のプログラムの結果を見てください。</p>
-      <pre>if not door_is_open():   <span class="note">← もしドアが開いていなければ</span>
-    open_door()          <span class="note">← そのときだけ開ける</span></pre>
+      <pre>if not door_is_open():  <span class="note">← 開いていなければ</span>
+    open_door()         <span class="note">← そのときだけ開ける</span></pre>
       <p class="task">どちらの場合でもゴールできるように直しましょう。教科書 p.165 の例題3と同じルールです。</p>`,
     map: ["########", "#S....##", "#####.##", "#####.##", "#####G##", "########"],
     tools: ["forward", "left", "right", "open", "for", "ifdoor"],
