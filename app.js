@@ -363,6 +363,34 @@ STAGES.push(
   },
 );
 
+/* 段階的なヒント。1つずつ開く。最後のヒントほど答えに近い。 */
+const HINTS = {
+  1: ["ゴールまで何マス進めばよいでしょう。マスを数えてみよう。", "S からゴールまでは 4 マスです。forward() 1行で 1 マス進みます。", "forward() を 4 行にすればゴールです。"],
+  2: ["range( ) の中の数が、くり返す回数です。", "ゴールまでは何マスでしょう。", "range(3) を range(8) にしよう。"],
+  3: ["まず今のまま実行して、どちらの場合に失敗するか見よう。", "閉まっているときだけ open_door() を実行したい。「もしドアが閉まっていたら」のボタンを使います。", "open_door() の行を if not door_is_open(): の下に入れて、字下げしよう。"],
+  4: ["先に紙に道順を書こう。「3マス進む、右を向く…」のように。", "同じ forward() が続くところは for でまとめられます。", "最後はステップ3と同じく、ドアの前で if not door_is_open(): を使います。"],
+  5: ["左に何回向くと、右を向いたのと同じになるでしょう。", "左に 3 回向くと、右を向いたのと同じです（90° × 3 = 270°）。", "for i in range(3): の下に left() を書くと、右を向けます。"],
+  6: ["正方形は 4 回、90° ずつ曲がりました。三角形は何回、何度ずつ曲がるでしょう。", "1周は 360° です。三角形は 360 ÷ 3 = 120° ずつ曲がります。", "range(3) と left(120) で三角形になります。星は「見本を入れる」で確かめよう。"],
+  7: ["まず 3000 のまま実行して、できた形をよく見よう。", "回数を 300 にすると、形はどう変わるでしょう。", "見本の「木」の size < 8 の 8 を変えると、枝の細かさが変わります。"],
+  "2-1": ["かけ算の記号は × ではなく * です。", "3行目の answer = a + b を変えます。", "answer = a * b にしよう。"],
+  "2-2": ["x = x + 1 は「今の x に 1 を足して、x に入れ直す」という意味です。", "1 から 10 にするには、1 を何回足せばよいでしょう。", "x = x + 1 の行を 9 行にしよう。第3時の for を使うと短く書けます。"],
+  "2-3": ["まず実行して、エラーの出た行を見よう。", "4行目の名前は、3行目の変数名と同じつづりですか。", "わり算は足し算より先に計算されます。(a + b) / 2 のように ( ) で囲もう。"],
+  "3-1": ["1行目を a = 91 にしよう。", "b を 2, 3, 4… と変えて、余り rmndr が 0 になる数を探そう。", "b = 7 で試してみよう。"],
+  "3-2": ["奇数は「2 で割った余りが 1」の数です。", "i が奇数のときだけ print したい。「もし奇数なら」のボタンを使おう。", "if i % 2 == 1: の下に print(7 * i) を字下げして入れよう。"],
+  "3-3": ["total は合計を入れておく箱です。くり返すたびに何を足せばよいでしょう。", "i は 1, 2, 3, … 10 と変わります。", "3行目を total = total + i にしよう。"],
+  "3-4": ["15 は 3 でも 5 でも割り切れます。今のプログラムだと、15 のとき何が表示されるでしょう。", "「3 と 5 の両方で割り切れる」は「15 で割り切れる」と同じです。これを最初に調べます。", "if i % 15 == 0: を一番上にして、elif i % 3 == 0:、elif i % 5 == 0:、else: の順に並べよう。"],
+  "4-1": ["リストの添字は 0 から数えます。a[0] は 7 です。", "49 は 7 × 7 です。右の欄で 49 の下の番号を見よう。", "最後の行を print(a[6]) にしよう。"],
+  "4-2": ["myround はそのままでかまいません。直すのは bigger です。", "a が b より大きいときは a を、そうでなければ b を返します。", "bigger の中を if a > b: → return a、else: → return b にしよう。"],
+  "4-3": ["step() を1回呼ぶと、ロボットは階段を1段おります。", "ゴールまで、階段は何段あるでしょう。", "for i in range(4): の下に step() を書いてみよう。"],
+  "5-1": ["target の数を書きかえて実行します。", "comp が比べた回数です。右の欄で i が動く様子も見よう。", "最後に target = 10011 にして実行しよう。"],
+  "5-2": ["imid が真ん中の位置です。比べるたびに、探す範囲が半分になります。", "target を 10001 にして実行しよう。", "10001 で何回だったか、線形探索の回数とくらべよう。"],
+  "6-1": ["if data[i] > data[i + 1]: の行が「入れ替えるかどうか」を決めています。", "> を逆向きにすると、どうなるでしょう。", "その行を if data[i] < data[i + 1]: にしよう。"],
+  "6-2": ["まず実行して、件数と回数の表を見よう。", "最後の for の行に [10, 20, 40] というリストがあります。", "そのリストを [10, 20, 40, 1000] にしよう。"],
+};
+/* 迷路の最短チャレンジ。空行と # のメモをのぞいた行数が、この数以下なら ★。 */
+const GOAL_LINES = { 2: 2, 3: 8, 4: 13, 5: 15, "4-3": 7 };
+const countLines = (code) => code.split("\n").filter((l) => l.trim() && !l.trim().startsWith("#")).length;
+
 const LESSONS = [[1, "アルゴリズム"], [2, "変数"], [3, "分岐と反復"], [4, "リストと関数"], [5, "探索"], [6, "整列"]];
 {
   const count = {};
@@ -375,10 +403,11 @@ const LESSONS = [[1, "アルゴリズム"], [2, "変数"], [3, "分岐と反復"
 
 /* ------------------------------------------------------------------ 保存 */
 const store = (() => {
-  let data = { code: {}, cleared: {}, last: 1 };
+  let data = { code: {}, cleared: {}, last: 1, best: {}, hints: {} };
   try {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) data = Object.assign(data, JSON.parse(raw));
+    data.best = data.best || {}; data.hints = data.hints || {};
   } catch (e) { /* 保存できない環境でも動かす */ }
   return {
     data,
@@ -774,6 +803,17 @@ function buildPad() {
     },
     place,
     finish(end) { if (end) { px = end[0]; pyy = end[1]; ph = end[2]; place(); } },
+    savePng() {
+      const out = document.createElement("canvas");
+      out.width = canvas.width; out.height = canvas.height;
+      const c = out.getContext("2d");
+      c.fillStyle = "#ffffff"; c.fillRect(0, 0, out.width, out.height);
+      c.drawImage(canvas, 0, 0);
+      const a = document.createElement("a");
+      a.download = `ロボ迷路_${stage.tab}.png`;
+      a.href = out.toDataURL("image/png");
+      document.body.appendChild(a); a.click(); a.remove();
+    },
   };
   api.reset();
   return api;
@@ -1029,7 +1069,11 @@ function finishRun() {
     if (res.status === "done") {
       const lines = res.actions.filter((a) => a[0] === "L").length, dots = res.actions.filter((a) => a[0] === "D").length;
       const what = [lines ? `線 ${lines} 本` : "", dots ? `点 ${dots} 個` : ""].filter(Boolean).join("、") || "何も描かれていません";
-      setResult("ok", [h("p", "head", "最後まで実行できました"), h("p", "", what), nextButton()]);
+      const save = h("button", "btn small", "画像を保存"); save.type = "button";
+      save.addEventListener("click", () => world.savePng());
+      const acts = nextButton() || h("div", "actions");
+      acts.prepend(save);
+      setResult("ok", [h("p", "head", "最後まで実行できました"), h("p", "", what), acts]);
       markCleared();
     } else setResult("bad", errorBlock(res));
     return;
@@ -1044,6 +1088,14 @@ function finishRun() {
     kids.push(h("p", "head", stage.door ? "クリア。開いていても閉まっていても、ゴールできました" : "ゴール。クリアです"));
     const tip = stage.tip ? stage.tip(flowInfo) : "";
     if (tip) kids.push(h("p", "", tip));
+    const goal = GOAL_LINES[stage.id];
+    if (goal != null) {
+      const n = countLines(ui.code.value), prev = store.data.best[stage.id];
+      if (prev == null || n < prev) { store.data.best[stage.id] = n; store.save(); }
+      kids.push(h("p", "star", n <= goal
+        ? `★ 最短チャレンジ達成。${n} 行で書けました（目標 ${goal} 行以下）。`
+        : `最短チャレンジ：いまは ${n} 行です。${goal} 行以下にできたら ★ です。for を使えるところはありませんか。`));
+    }
   } else if (res.status === "goal") {
     cls = "half";
     const other = keys.find((k) => k !== shown);
@@ -1068,7 +1120,7 @@ function finishRun() {
     }
     kids.push(ul);
   }
-  if (allPass) { kids.push(nextButton()); markCleared(); }
+  if (allPass) { kids.push(nextButton()); markCleared(); renderSteps(); }
   setResult(cls, kids);
 }
 function nextButton() {
@@ -1225,15 +1277,15 @@ function renderSteps() {
     sec.appendChild(h("h3", "", `第${n}時　${name}`));
     const ol = h("ol", "toc-list");
     for (const s of STAGES.filter((x) => x.lesson === n)) {
-      const done = store.data.cleared[s.id];
+      const done = store.data.cleared[s.id], star = hasStar(s);
       const li = h("li", "");
       const b = h("button", "step" + (s === stage ? " current" : "") + (done ? " cleared" : ""));
       b.type = "button";
-      b.appendChild(h("span", "num", done ? "✓" : String(s.n)));
+      b.appendChild(h("span", "num", star ? "★" : done ? "✓" : String(s.n)));
       b.appendChild(h("span", "", s.tab));
       if (s.hue) b.dataset.hue = s.hue;
       if (s === stage) b.setAttribute("aria-current", "page");
-      b.setAttribute("aria-label", `第${n}時 ステップ${s.n} ${s.tab}${done ? "（クリア済み）" : ""}`);
+      b.setAttribute("aria-label", `第${n}時 ステップ${s.n} ${s.tab}${star ? "（最短チャレンジ達成）" : done ? "（クリア済み）" : ""}`);
       b.addEventListener("click", () => { openStage(s.id, true); if (!tocDocked()) setToc(false, true); });
       li.appendChild(b); ol.appendChild(li);
     }
@@ -1244,21 +1296,85 @@ function renderSteps() {
   $("toc-now").textContent = cur ? `第${cur[0]}時 ${cur[1]}` : "";
   ui.steps.textContent = "";
   for (const s of STAGES.filter((x) => x.lesson === stage.lesson)) {
-    const done = store.data.cleared[s.id];
+    const done = store.data.cleared[s.id], star = hasStar(s);
     const b = h("button", "step" + (s === stage ? " current" : "") + (done ? " cleared" : ""));
     b.type = "button";
-    b.appendChild(h("span", "num", done ? "✓" : String(s.n)));
+    b.appendChild(h("span", "num", star ? "★" : done ? "✓" : String(s.n)));
     b.appendChild(h("span", "", s.tab));
     if (s.hue) b.dataset.hue = s.hue;
     if (s === stage) b.setAttribute("aria-current", "step");
-    b.setAttribute("aria-label", `ステップ${s.n} ${s.tab}${done ? "（クリア済み）" : ""}`);
+    b.setAttribute("aria-label", `ステップ${s.n} ${s.tab}${star ? "（最短チャレンジ達成）" : done ? "（クリア済み）" : ""}`);
     b.addEventListener("click", () => openStage(s.id, true));
     ui.steps.appendChild(b);
   }
 }
+function hasStar(s) { const g = GOAL_LINES[s.id], b = store.data.best[s.id]; return g != null && b != null && b <= g; }
 function parseHash() {
-  const m = location.hash.match(/^#step-(\d+(?:-\d+)?)$/);
+  const m = location.hash.match(/^#step-(\d+(?:-\d+)?)(?:&|$)/);
   return m ? (m[1].includes("-") ? m[1] : Number(m[1])) : null;
+}
+
+/* ------------------------------------------------------------------ リンクで共有 */
+function encodeCode(text) {
+  const bytes = new TextEncoder().encode(text);
+  let bin = ""; for (const x of bytes) bin += String.fromCharCode(x);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function decodeCode(s) {
+  try {
+    const bin = atob(s.replace(/-/g, "+").replace(/_/g, "/"));
+    return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
+  } catch (e) { return null; }
+}
+function sharedCode() {
+  const m = location.hash.match(/&code=([A-Za-z0-9_-]+)/);
+  return m ? decodeCode(m[1]) : null;
+}
+function openShared() {
+  const text = sharedCode();
+  try { history.replaceState(null, "", "#step-" + stage.id); } catch (e) { /* そのまま */ }
+  if (text == null) return;
+  const before = ui.code.value;
+  ui.code.value = text;
+  onEdit(); refreshGutter();
+  const back = h("button", "btn small", "自分のプログラムに戻す"); back.type = "button";
+  back.addEventListener("click", () => { setCode(before); setResult("idle", [h("p", "", "自分のプログラムに戻しました。")]); });
+  setResult("idle", [h("p", "", "共有されたプログラムを開きました。「実行」で動かしてみよう。"), h("div", "actions", null)]);
+  ui.result.querySelector(".actions").appendChild(back);
+}
+async function copyLink() {
+  const url = location.href.split("#")[0] + "#step-" + stage.id + "&code=" + encodeCode(ui.code.value);
+  let ok = false;
+  try { await navigator.clipboard.writeText(url); ok = true; } catch (e) { ok = false; }
+  if (ok) { setResult("idle", [h("p", "", "このプログラムを開くリンクをコピーしました。となりの人や先生に送って見せられます。")]); return; }
+  const box = h("input", "linkbox"); box.type = "text"; box.readOnly = true; box.value = url; box.setAttribute("aria-label", "共有リンク");
+  setResult("idle", [h("p", "", "コピーできなかったので、下のリンクを選んでコピーしてください。"), box]);
+  box.focus(); box.select();
+}
+function renderHints() {
+  const list = HINTS[stage.id] || [];
+  const goal = GOAL_LINES[stage.id];
+  if (goal != null) {
+    const best = store.data.best[stage.id];
+    ui.body.appendChild(h("p", "challenge", `最短チャレンジ：${goal} 行以下でクリアすると ★${best != null ? `（自分の記録 ${best} 行）` : ""}`));
+  }
+  if (!list.length) return;
+  const box = h("div", "hints");
+  const shown = Math.min(store.data.hints[stage.id] || 0, list.length);
+  list.slice(0, shown).forEach((t, i) => { const p = h("p", "hint"); p.appendChild(h("b", "", `ヒント${i + 1}`)); p.appendChild(document.createTextNode(t)); box.appendChild(p); });
+  if (shown < list.length) {
+    const b = h("button", "btn small", shown ? `次のヒント（${shown + 1} / ${list.length}）` : `ヒントを見る（${list.length} つ）`);
+    b.type = "button";
+    b.addEventListener("click", () => {
+      store.data.hints[stage.id] = shown + 1; store.save();
+      const old = ui.body.querySelector(".hints"); const ch = ui.body.querySelector(".challenge");
+      if (old) old.remove(); if (ch) ch.remove();
+      renderHints();
+      const ps = ui.body.querySelectorAll(".hint"); if (ps.length) { ps[ps.length - 1].setAttribute("tabindex", "-1"); ps[ps.length - 1].focus(); }
+    });
+    box.appendChild(b);
+  }
+  ui.body.appendChild(box);
 }
 function openStage(id, setHash) {
   stage = STAGES.find((s) => s.id === id) || STAGES[0];
@@ -1273,6 +1389,7 @@ function openStage(id, setHash) {
   ui.kicker.textContent = stage.kicker;
   ui.title.textContent = stage.title;
   ui.body.innerHTML = stage.body; // STAGES に書いた自前の文だけを入れる
+  renderHints();
 
   ui.tools.textContent = "";
   if (stage.tools.length) ui.tools.appendChild(h("span", "label", "命令を入れる"));
@@ -1318,7 +1435,9 @@ ui.reset.addEventListener("click", () => {
 window.addEventListener("hashchange", () => {
   const id = parseHash();
   if (id != null && id !== stage.id) openStage(id, false);
+  if (sharedCode() != null) openShared();
 });
+$("share").addEventListener("click", copyLink);
 
 /* ------------------------------------------------------------------ 目次（開け閉め） */
 const toc = $("toc"), tocBtn = $("toc-btn");
@@ -1368,6 +1487,7 @@ window.addEventListener("resize", () => { flowZoom.refit(); worldZoom.refit(); }
   if (store.data.big) setBig(true);
   if (store.data.toc && tocDocked()) { toc.hidden = false; tocBtn.setAttribute("aria-expanded", "true"); document.documentElement.classList.add("toc-open"); }
   openStage(parseHash() ?? store.data.last ?? 1, false);
+  if (sharedCode() != null) openShared();
   worldZoom.refit();
   boot();
 })();

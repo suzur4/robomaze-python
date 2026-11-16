@@ -268,3 +268,13 @@ code { background: var(--color-paper-3); padding-inline: var(--space-2xs); white
 .world-in.fixed { width: max-content; }
 .zoom { display: flex; align-items: center; gap: var(--space-2xs); flex-wrap: wrap; }
 .zoom-val { min-width: 48px; text-align: center; font-size: var(--text-sm); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* ---------- ヒントと最短チャレンジ ---------- */
+.hints { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xs); }
+.hint { display: flex; gap: var(--space-sm); padding-left: var(--space-sm); border-left: var(--rule-box) solid var(--color-accent-3); }
+.hint b { flex: none; }
+.hint:focus { outline: none; }
+.hint:focus-visible { outline: var(--rule-bar) solid var(--color-ink); outline-offset: 2px; }
+.challenge { font-size: var(--text-sm); font-weight: 700; }
+.result .star { font-weight: 700; }
+.linkbox { width: 100%; font: inherit; font-size: var(--text-sm); padding: var(--space-2xs) var(--space-xs); border: var(--rule-bar) solid var(--color-ink); background: var(--color-paper-3); color: var(--color-ink); }

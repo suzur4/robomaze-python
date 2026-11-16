@@ -15,6 +15,7 @@ import io
 import json
 import math
 import sys
+import unicodedata
 
 USER_FILE = "<あなたのプログラム>"
 MAX_LINES = 300_000      # これを超えて行を実行したら「くり返しが終わらない」とみなす
@@ -268,8 +269,90 @@ SYNTAX_JA = [
     ("invalid non-printable", "全角スペースなど、見えない文字がまざっています。半角に直そう。"),
     ("unterminated string", '文字を囲む " が閉じられていません。'),
     ("Missing parentheses", "命令のあとに ( ) が必要です。"),
+    ("Maybe you meant '=='", "くらべるときは = ではなく == を使います。= は箱に入れる（代入）ときの記号です。"),
+    ("forgot a comma", "( ) の中で、区切りの , （カンマ）が抜けていないか確認しよう。"),
     ("invalid syntax", "書き方が Python のルールに合っていません。つづりと記号を確認しよう。"),
 ]
+
+TYPE_JA = {"int": "整数", "float": "小数", "str": "文字", "list": "リスト", "bool": "True / False", "NoneType": "None（何もない）", "dict": "辞書", "tuple": "タプル"}
+
+
+def _type_ja(name):
+    return TYPE_JA.get(name, name)
+
+
+def _wide_char(msg):
+    """「invalid character '８' (U+FF18)」から、まざった全角文字の説明を作る。"""
+    import re
+    m = re.search(r"invalid character '(.)'", msg)
+    if not m:
+        return None
+    c = m.group(1)
+    half = unicodedata.normalize("NFKC", c)
+    if c in "“”＂":
+        half = '"'
+    elif c in "‘’＇":
+        half = "'"
+    elif c in "、，":
+        half = ","
+    elif c in "。．":
+        half = "."
+    elif c in "ー－−":
+        half = "-"
+    if half == c or not half.isascii():
+        return f"「{c}」は Python では使えない文字です。半角の英数字と記号に直そう。"
+    kind = "数字" if half.isdigit() else "英字" if half.isalpha() else "記号"
+    return f"全角の{kind}「{c}」がまざっています。半角の {half} に直そう。"
+
+
+def _runtime_ja(e, src):
+    """よくある実行時エラーを、高校生向けの説明に変える。わからないときは None。"""
+    t = str(e)
+    if isinstance(e, TypeError):
+        import re
+        m = re.search(r"'(\w+)' object is not iterable", t)
+        if m:
+            return (f"for の in の後ろに{_type_ja(m.group(1))}がそのまま書かれています。"
+                    "回数をくり返すときは range(8) のように range( ) で囲もう。")
+        m = re.search(r"'(\w+)' object cannot be interpreted as an integer", t)
+        if m:
+            k = m.group(1)
+            extra = {"str": ' " " で囲むと文字になります。数は " を付けずに書きます。',
+                     "float": " 小数は使えません。わり算は // を使うと整数になります。"}.get(k, "")
+            return f"range( ) の中には整数を書きます。いまは{_type_ja(k)}が入っています。{extra}"
+        if "can only concatenate str" in t or ("unsupported operand" in t and "'str'" in t):
+            return '数と文字は + でつなげません。print("答え", x) のように , で区切るか、str(x) で文字にしよう。'
+        m = re.search(r"object of type '(\w+)' has no len\(\)", t)
+        if m:
+            return f"len( ) で長さを調べられるのはリストや文字だけです。いまは{_type_ja(m.group(1))}に使っています。"
+        m = re.search(r"(\w+)\(\) takes (\d+) positional arguments? but (\d+) (?:was|were) given", t)
+        if m:
+            return f"{m.group(1)}( ) には ( ) の中に {m.group(2)} 個の値を渡します。いまは {m.group(3)} 個です。"
+        m = re.search(r"(\w+)\(\) missing (\d+) required positional argument", t)
+        if m:
+            return f"{m.group(1)}( ) の ( ) の中に、渡す値が足りません。"
+        if "unsupported operand" in t or "not supported between" in t:
+            return "計算やくらべる記号の両側に、組み合わせられない種類の値があります。"
+    if isinstance(e, IndexError):
+        return "リストの範囲の外を見ています。添字は 0 から始まり、最後は「長さ − 1」です。"
+    if isinstance(e, AttributeError):
+        name = getattr(e, "name", None)
+        obj = getattr(e, "obj", None)
+        if name is not None and obj is not None:
+            k = type(obj).__name__
+            msg = f"{_type_ja(k)}には .{name} という命令はありません。"
+            if k == "list" and name in ("push", "add", "insert_last"):
+                msg += "リストの最後に足すときは append を使います。"
+            else:
+                close = difflib.get_close_matches(name, [d for d in dir(obj) if not d.startswith("_")], n=1, cutoff=0.6)
+                if close:
+                    msg += f" {close[0]} のことですか？"
+            return msg
+    if isinstance(e, KeyError):
+        return f"辞書に {e} という見出しはありません。"
+    if isinstance(e, ValueError) and "invalid literal for int()" in t:
+        return "int( ) で整数にできるのは、数字だけの文字です。"
+    return None
 
 
 def _describe(e, names, code=""):
@@ -292,6 +375,15 @@ def _describe(e, names, code=""):
             if key in msg:
                 ja = text
                 break
+        lines = code.split("\n")
+        src = lines[e.lineno - 1].strip() if e.lineno and 0 < e.lineno <= len(lines) else ""
+        wide = _wide_char(msg) if "invalid character" in msg else None
+        if wide:
+            ja = wide
+        elif src.startswith("else if") or src.startswith("elseif"):
+            ja = "Python では else if ではなく elif と書きます。例: elif x == 2:"
+        elif (src.startswith("else") or src.startswith("elif")) and msg.startswith("invalid syntax"):
+            ja = "else や elif の前には、同じ字下げの if が必要です。字下げの位置をそろえよう。"
         return {"kind": "syntax", "message": ja, "line": e.lineno, "raw": f"{type(e).__name__}: {msg}"}
 
     if isinstance(e, NameError):
@@ -300,6 +392,8 @@ def _describe(e, names, code=""):
         src = src_lines[line - 1] if line and 0 < line <= len(src_lines) else ""
         if "color(" in src and f'"{name}"' not in src and f"'{name}'" not in src:
             ja = f'色の名前は " " で囲みます。例: color("{name}")'
+        elif name in ("random", "math"):
+            ja = f"{name} を使うには、プログラムの1行目に import {name} と書こう。"
         else:
             close = difflib.get_close_matches(name, names, n=1, cutoff=0.7)
             ja = f"{name} という名前は知りません。つづりを確認しよう。"
@@ -313,7 +407,10 @@ def _describe(e, names, code=""):
         return {"kind": "other", "message": "0 で割ることはできません。", "line": line, "raw": raw}
     if isinstance(e, RecursionError):
         return {"kind": "logic", "message": "関数が自分を呼び出し続けて終わりません。終わる条件を確認しよう。", "line": line, "raw": raw}
-    return {"kind": "other", "message": "プログラムの途中でエラーが起きました。", "line": line, "raw": raw}
+    src_lines = code.split("\n")
+    src = src_lines[line - 1] if line and 0 < line <= len(src_lines) else ""
+    ja = _runtime_ja(e, src)
+    return {"kind": "other", "message": ja or "プログラムの途中でエラーが起きました。", "line": line, "raw": raw}
 
 
 def _execute(code, api, on_line=None, env_out=None):
@@ -329,11 +426,20 @@ def _execute(code, api, on_line=None, env_out=None):
     err = None
     try:
         compiled = compile(code, USER_FILE, "exec")
-        for node in ast.walk(ast.parse(code, USER_FILE)):
+        tree = ast.parse(code, USER_FILE)
+        for node in ast.walk(tree):
             if isinstance(node, ast.Expr) and isinstance(node.value, ast.Name) and node.value.id in api:
                 err = {"kind": "syntax", "line": node.lineno, "raw": "",
                        "message": f"{node.value.id} のあとに ( ) が必要です。{node.value.id}() と書こう。"}
                 return err, ""
+            if isinstance(node, (ast.If, ast.While)):
+                called = {id(c.func) for c in ast.walk(node.test) if isinstance(c, ast.Call)}
+                for sub in ast.walk(node.test):
+                    if isinstance(sub, ast.Name) and sub.id in api and id(sub) not in called:
+                        err = {"kind": "syntax", "line": node.lineno, "raw": "",
+                               "message": f"{sub.id} のあとに ( ) が必要です。{sub.id}() と書かないと、"
+                                          "調べた結果ではなく、命令の名前そのものを見てしまいます。"}
+                        return err, ""
         sys.settrace(_tracer_factory(on_line))
         try:
             exec(compiled, env)
