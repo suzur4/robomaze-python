@@ -507,7 +507,9 @@ function refreshGutter() {
     ui.gutter.textContent = "";
     for (let i = 1; i <= n; i++) ui.gutter.appendChild(h("div", "", String(i)));
   }
-  ui.code.style.height = Math.min(Math.max(n + 1, 7), 18) * LH + PAD * 2 + "px";
+  // 画面の高さが低いとき（表示スケール 125%・150% など）は、欄を低くして全体が見えるようにする
+  const most = Math.max(6, Math.min(18, Math.floor((window.innerHeight - 300) / LH)));
+  ui.code.style.height = Math.min(Math.max(n + 1, Math.min(7, most)), most) * LH + PAD * 2 + "px";
   // 行番号の欄は、プログラムの欄と同じ高さにして一緒にスクロールさせる
   ui.gutter.style.height = ui.code.style.height;
   ui.gutter.style.boxSizing = "border-box";
@@ -1026,18 +1028,22 @@ function buildTrace(st) {
 const DOOR_TEXT = { closed: "閉まっている", open: "開いている" };
 
 function setPlaying(on) {
+  if (!on) hideNext();
   playing = on; skip = false;
   ui.runLabel.textContent = on ? "とばして結果へ" : "実行";
 }
 async function run() {
   if (!py) return;
-  if (playing) { skip = true; return; }
+  if (playing) { skip = true; hideNext(); return; }
   const token = ++runToken;
   // 貼り付けた Windows の改行と Tab をそろえてから実行する
   const code = ui.code.value.replace(/\r\n?/g, "\n").replace(/\t/g, "    ");
   markLine(null);
   updateFlow();
   ui.outBox.hidden = true;
+  // ロボット（変数の箱）の欄が画面の外なら、見える位置までスクロールする
+  const wf = $("world-frame").getBoundingClientRect();
+  if (wf.top < 0 || wf.bottom > window.innerHeight) $("world-frame").scrollIntoView({ block: wf.height > window.innerHeight ? "start" : "nearest", behavior: calm() ? "auto" : "smooth" });
   if (stage.kind === "maze") {
     const sj = JSON.stringify({ map: stage.map, door: !!stage.door, disabled: stage.disabled || [], dir: stage.dir || 0 });
     const results = {};
@@ -1048,7 +1054,8 @@ async function run() {
       results.only = JSON.parse(py.run_maze(code, sj, false));
     }
     const keys = Object.keys(results);
-    const shown = keys[Math.floor(Math.random() * keys.length)];
+    const pick = $("door-case").value;
+    const shown = teaching() && keys.includes(pick) ? pick : keys[Math.floor(Math.random() * keys.length)];
     last = { results, shown, code, flow: flowInfo };
     await showCase(shown, token);
   } else if (stage.kind === "trace") {
@@ -1083,6 +1090,7 @@ async function run() {
 }
 
 async function showCase(key, token) {
+  releaseNext();
   last.shown = key;
   const res = last.results[key];
   const label = stage.door ? `ドアが${DOOR_TEXT[key]}場合を実行中` : "実行中";
@@ -1091,13 +1099,17 @@ async function showCase(key, token) {
   setPlaying(true);
   await sleep(160);
   // 動きが多いときは、全体が長くなりすぎないように速める
-  const ms = Math.max(40, Number(ui.speed.value) * Math.min(1, 30 / Math.max(1, res.actions.length)));
+  const ms = Math.max(40, (Number(ui.speed.value) || 340) * Math.min(1, 30 / Math.max(1, res.actions.length)));
   document.documentElement.style.setProperty("--dur", Math.round(ms * 0.9) + "ms");
-  for (const a of res.actions) {
+  const total = res.actions.length;
+  for (let k = 0; k < total; k++) {
+    const a = res.actions[k];
     if (token !== runToken) return;
     markLine(a.line);
-    await world.play(a, ms);
+    if (stepMode()) { await waitNext(k + 1, total, a.line); if (token !== runToken) return; }
+    await world.play(a, stepMode() ? 340 : ms);
   }
+  hideNext();
   if (token !== runToken) return;
   setPlaying(false);
   finishRun();
@@ -1129,6 +1141,28 @@ async function replayDraw(res, token) {
   if (token !== runToken) return;
   world.finish(res.end);
 }
+
+/* 1つずつ実行（迷路）: 次に実行する行を光らせて、ボタンで1つ進める */
+const stepMode = () => stage.kind === "maze" && ui.speed.value === "step" && !skip;
+let nextResolve = null, nextQueued = 0;
+function waitNext(k, total, line) {
+  const b = $("next-step");
+  const src = line ? (ui.code.value.split("\n")[line - 1] || "").trim() : "";
+  b.textContent = "";
+  b.appendChild(h("b", "", `1つ進む（${k} / ${total}）`));
+  if (line) b.appendChild(h("span", "", `次は ${line}行目　${src.length > 28 ? src.slice(0, 28) + "…" : src}`));
+  if (b.hidden) { b.hidden = false; b.focus({ preventScroll: true }); }
+  if (nextQueued > 0) { nextQueued--; return Promise.resolve(); }
+  return new Promise((r) => { nextResolve = r; });
+}
+function releaseNext() { if (nextResolve) { const r = nextResolve; nextResolve = null; r(); } }
+function hideNext() {
+  const b = $("next-step");
+  if (document.activeElement === b) ui.run.focus({ preventScroll: true });
+  b.hidden = true; nextQueued = 0; releaseNext();
+}
+$("next-step").addEventListener("click", () => { if (nextResolve) releaseNext(); else nextQueued = Math.min(nextQueued + 1, 3); });
+ui.speed.addEventListener("change", () => { if (ui.speed.value !== "step") { nextQueued = 0; releaseNext(); $("next-step").hidden = true; } });
 
 function revealResult() {
   const r = ui.result.getBoundingClientRect();
@@ -1272,8 +1306,14 @@ function finishRun() {
 }
 function nextButton() {
   const i = STAGES.indexOf(stage);
-  if (i >= STAGES.length - 1) return null;
   const wrap = h("div", "actions");
+  const lastOfLesson = i === STAGES.length - 1 || STAGES[i + 1].lesson !== stage.lesson;
+  if (lastOfLesson) {
+    const sb = h("button", "btn", `第${stage.lesson}時のまとめ`); sb.type = "button";
+    sb.addEventListener("click", () => openSummary(stage.lesson));
+    wrap.appendChild(sb);
+  }
+  if (i >= STAGES.length - 1) return wrap;
   const nx = STAGES[i + 1];
   const b = h("button", "btn next", nx.lesson !== stage.lesson ? `第${nx.lesson}時へ` : "次のステップへ");
   b.type = "button";
@@ -1438,6 +1478,9 @@ function renderSteps() {
       li.appendChild(b); ol.appendChild(li);
     }
     sec.appendChild(ol);
+    const sm = h("button", "btn ghost small", `第${n}時のまとめ`); sm.type = "button";
+    sm.addEventListener("click", () => { if (!tocDocked()) setToc(false, false); openSummary(n); });
+    sec.appendChild(sm);
     ui.lessons.appendChild(sec);
   }
   const cur = LESSONS.find(([n]) => n === stage.lesson);
@@ -1509,7 +1552,7 @@ function renderHints() {
   }
   if (!list.length) return;
   const box = h("div", "hints");
-  const shown = Math.min(store.data.hints[stage.id] || 0, list.length);
+  const shown = teaching() ? list.length : Math.min(store.data.hints[stage.id] || 0, list.length);
   list.slice(0, shown).forEach((t, i) => { const p = h("p", "hint"); p.appendChild(h("b", "", `ヒント${i + 1}`)); p.appendChild(document.createTextNode(t)); box.appendChild(p); });
   if (shown < list.length) {
     const b = h("button", "btn small", shown ? `次のヒント（${shown + 1} / ${list.length}）` : `ヒントを見る（${list.length} つ）`);
@@ -1590,6 +1633,9 @@ function openStage(id, setHash) {
     }
   }
 
+  $("opt-step").hidden = stage.kind !== "maze";
+  if (stage.kind !== "maze" && ui.speed.value === "step") ui.speed.value = "340";
+  $("door-pick").hidden = !(teaching() && stage.door);
   world = stage.kind === "maze" ? buildMaze(stage) : stage.kind === "trace" ? buildTrace(stage) : buildPad();
   renderPredict();
   ui.world.classList.toggle("fixed", stage.kind !== "trace");
@@ -1631,10 +1677,11 @@ function setToc(open, focusBack) {
 }
 tocBtn.addEventListener("click", () => setToc(toc.hidden, false));
 $("toc-close").addEventListener("click", () => setToc(false, true));
+const FRESH = () => ({ code: {}, cleared: {}, last: 1, best: {}, hints: {}, big: false, toc: false, notes: {}, fold: false, teach: false });
 function resetAll() {
   try { localStorage.removeItem(STORE_KEY); } catch (e) { /* 保存できない環境 */ }
-  Object.assign(store.data, { code: {}, cleared: {}, last: 1, best: {}, hints: {}, big: false, toc: false });
-  setBig(false);
+  Object.assign(store.data, FRESH());
+  setBig(false); setFold(false); setTeach(false);
   openStage(STAGES[0].id, true);
 }
 $("reset-all").addEventListener("click", () => {
@@ -1668,23 +1715,126 @@ const worldZoom = addZoom($("world-frame"), ui.world, "実行の様子", () => {
   const n = Number(ui.world.dataset.natural);
   if (!n) return 1;
   const f = $("world-frame"), cs = getComputedStyle(f);
-  return Math.min(1, Math.floor(((f.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 8) / n) * 100) / 100);
+  const cap = document.documentElement.classList.contains("teach") ? 2 : 1;
+  return Math.min(cap, Math.floor(((f.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 8) / n) * 100) / 100);
 }, "全体を表示");
 const flowZoom = addZoom($("flow-frame"), ui.flow, "フローチャート", () => {
   const svgEl = ui.flow.querySelector("svg");
   if (!svgEl) return 1;
   const room = $("flow-frame").clientWidth - 8;
-  return Math.min(1, room / Number(svgEl.getAttribute("width")));
+  const cap = document.documentElement.classList.contains("teach") ? 1.4 : 1;
+  return Math.min(cap, room / Number(svgEl.getAttribute("width")));
 }, "全体を表示", 0.6);
-window.addEventListener("resize", () => { flowZoom.refit(); worldZoom.refit(); });
+window.addEventListener("resize", () => { flowZoom.refit(); worldZoom.refit(); refreshGutter(); });
+
+/* 説明をたたむ */
+function setFold(on) {
+  document.querySelector(".guide").classList.toggle("folded", on);
+  const b = $("fold");
+  b.setAttribute("aria-expanded", String(!on));
+  b.textContent = on ? "説明をひらく" : "説明をたたむ";
+  store.data.fold = on; store.save();
+}
+$("fold").addEventListener("click", () => setFold(!document.querySelector(".guide").classList.contains("folded")));
+
+/* ------------------------------------------------------------------ 授業モード（先生がプロジェクターに映すとき） */
+const teaching = () => document.documentElement.classList.contains("teach");
+function setTeach(on) {
+  if (!on && $("teach-badge").contains(document.activeElement)) big.focus({ preventScroll: true });
+  document.documentElement.classList.toggle("teach", on);
+  $("teach-badge").hidden = !on;
+  $("teach-on").textContent = on ? "授業モードを終わる" : "授業モードにする";
+  store.data.teach = on; store.save();
+  if (stage) { $("door-pick").hidden = !(on && stage.door); const hs = ui.body.querySelector(".hints"); const lf = ui.body.querySelector(".life"); const ch = ui.body.querySelector(".challenge"); for (const x of [hs, lf, ch]) if (x) x.remove(); renderHints(); }
+  worldZoom.refit(); flowZoom.refit(); refreshGutter();
+}
+$("teach-on").addEventListener("click", () => { const on = !teaching(); setTeach(on); if (!tocDocked()) setToc(false, true); });
+$("teach-off").addEventListener("click", () => setTeach(false));
+
+/* ------------------------------------------------------------------ まとめ（各時間の最後） */
+const SUM_CARDS = {
+  1: [["seq", "順次", 1, "命令は上から順に1つずつ実行される。"], ["loop", "反復", 2, "同じ命令は for でくり返しにまとめられる。"], ["sel", "選択", 3, "if で、場合によってすることを変えられる。"]],
+};
+function openSummary(lesson) {
+  const dlg = $("summary"), body = $("sum-body");
+  const name = (LESSONS.find(([n]) => n === lesson) || [lesson, ""])[1];
+  $("sum-title").textContent = `第${lesson}時のまとめ　${name}`;
+  body.textContent = "";
+  const steps = STAGES.filter((s) => s.lesson === lesson);
+  const done = steps.filter((s) => store.data.cleared[s.id]).length;
+  const stars = steps.filter((s) => hasStar(s)).length, starMax = steps.filter((s) => GOAL_LINES[s.id] != null).length;
+  body.appendChild(h("p", "sum-score", `クリア ${done} / ${steps.length} ステップ${starMax ? `　★ ${stars} / ${starMax}` : ""}`));
+  const cards = SUM_CARDS[lesson];
+  if (cards) {
+    body.appendChild(h("p", "", "どんなプログラムも、この3つの組み合わせでできています。あなたが書いたプログラムで確かめよう。"));
+    const row = h("div", "sum-cards");
+    for (const [hue, title, id, text] of cards) {
+      const c = h("section", "sum-card " + hue);
+      c.appendChild(h("h3", "", title));
+      c.appendChild(h("p", "", text));
+      const own = store.data.code[id];
+      const ls = (own != null ? own : STAGES.find((x) => x.id === id).code).trim().split("\n");
+      c.appendChild(h("pre", "", ls.slice(0, 8).join("\n") + (ls.length > 8 ? `\n…（あと ${ls.length - 8} 行）` : "")));
+      row.appendChild(c);
+    }
+    body.appendChild(row);
+  } else {
+    const ul = h("ul", "sum-list");
+    for (const st of steps) ul.appendChild(h("li", "", `${store.data.cleared[st.id] ? "✓" : "　"} ステップ${st.n} ${st.title}`));
+    body.appendChild(ul);
+  }
+  const lifeNotes = steps.map((st) => LIFE[st.id]).filter(Boolean);
+  if (lifeNotes.length) {
+    body.appendChild(h("h3", "", "くらしの中のアルゴリズム"));
+    const ul = h("ul", "sum-list");
+    for (const t of lifeNotes) ul.appendChild(h("li", "", t));
+    body.appendChild(ul);
+  }
+  body.appendChild(h("h3", "", "ふりかえり"));
+  const lab = h("label", "sum-label", "今日わかったことと、身の回りで見つけた「順次・反復・選択」の例を書こう。");
+  lab.setAttribute("for", "sum-note");
+  const ta = document.createElement("textarea"); ta.id = "sum-note"; ta.rows = 4; ta.className = "sum-note";
+  store.data.notes = store.data.notes || {};
+  ta.value = store.data.notes[lesson] || "";
+  ta.addEventListener("input", () => { store.data.notes[lesson] = ta.value; store.save(); });
+  const copy = h("button", "btn small", "ふりかえりをコピー"); copy.type = "button";
+  const msg = h("p", "sub", ""); msg.setAttribute("role", "status");
+  copy.addEventListener("click", async () => {
+    const text = `第${lesson}時 ${name}\nクリア ${done}/${steps.length}\n${ta.value}`;
+    try { await navigator.clipboard.writeText(text); msg.textContent = "コピーしました。提出先に貼り付けてください。"; }
+    catch (e) { ta.focus(); ta.select(); msg.textContent = "コピーできなかったので、文字を選んで Ctrl + C でコピーしてください。"; }
+  });
+  body.append(lab, ta, h("div", "actions"));
+  body.lastChild.append(copy);
+  body.appendChild(msg);
+  const nx = STAGES.find((st) => st.lesson === lesson + 1);
+  if (nx) {
+    const go = h("button", "btn small", `第${lesson + 1}時へ`); go.type = "button";
+    go.addEventListener("click", () => { dlg.close(); openStage(nx.id, true); focusHead(); });
+    body.lastElementChild.previousElementSibling.appendChild(go);
+  }
+  if (!dlg.open) { sumOpener = document.activeElement; dlg.showModal(); }
+}
+let sumOpener = null;
+$("sum-close").addEventListener("click", () => $("summary").close());
+$("summary").addEventListener("close", () => {
+  const o = sumOpener; sumOpener = null;
+  if (o && o.isConnected && o.offsetParent !== null) o.focus(); else tocBtn.focus();
+});
 
 (function init() {
   if (/[?&]reset=1\b/.test(location.search)) {
     try { localStorage.removeItem(STORE_KEY); } catch (e) { /* 同上 */ }
-    Object.assign(store.data, { code: {}, cleared: {}, last: 1, best: {}, hints: {}, big: false, toc: false });
+    Object.assign(store.data, FRESH());
     try { history.replaceState(null, "", location.pathname + location.hash); } catch (e) { /* そのまま */ }
   }
   if (store.data.big) setBig(true);
+  if (store.data.fold) setFold(true);
+  if (/[?&]teach\b/.test(location.search)) {
+    store.data.teach = true;
+    try { history.replaceState(null, "", location.pathname + location.hash); } catch (e) { /* そのまま */ }
+  }
+  if (store.data.teach) setTeach(true);
   if (store.data.toc && tocDocked()) { toc.hidden = false; tocBtn.setAttribute("aria-expanded", "true"); document.documentElement.classList.add("toc-open"); }
   openStage(parseHash() ?? store.data.last ?? 1, false);
   if (sharedCode() != null) openShared();

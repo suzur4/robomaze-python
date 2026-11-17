@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ロボ迷路 Python</title>
 <meta name="description" content="ロボットを動かしながら、順次・くり返し・場合分けを学ぶ情報Ⅰの教材。ブラウザだけで Python が動きます。">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Jost:wght@700&family=M+PLUS+1+Code:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -27,6 +25,7 @@
     <span>目次</span><span class="toc-now" id="toc-now"></span>
   </button>
   <nav class="steps" id="steps" aria-label="ステップ"></nav>
+  <p class="teach-badge" id="teach-badge" hidden>授業モード <button type="button" class="btn small" id="teach-off">終わる</button></p>
   <button type="button" class="btn small" id="big" aria-pressed="false">文字を大きく</button>
 </header>
 
@@ -37,6 +36,8 @@
   </div>
   <nav id="lessons" aria-label="すべての時間とステップ"></nav>
   <div class="toc-foot">
+    <p>先生がプロジェクターに映すとき</p>
+    <button type="button" class="btn small" id="teach-on">授業モードにする</button>
     <p>共用のパソコンで、次の人のために記録を消すとき</p>
     <button type="button" class="btn small" id="reset-all">この端末の記録をすべて消す</button>
   </div>
@@ -46,8 +47,9 @@
   <div class="guide-head">
     <h2 id="st-head"><span class="num" id="st-num"></span><span id="st-title"></span></h2>
     <p class="ref" id="st-kicker"></p>
+    <button type="button" class="btn small fold" id="fold" aria-expanded="true" aria-controls="st-body">説明をたたむ</button>
   </div>
-  <div class="body" id="st-body"></div>
+  <div class="body" id="st-body" tabindex="0" role="region" aria-label="ステップの説明"></div>
 </section>
 
 <main class="layout container">
@@ -70,8 +72,17 @@
           <option value="620">ゆっくり</option>
           <option value="340" selected>ふつう</option>
           <option value="110">はやい</option>
+          <option value="step" id="opt-step">1つずつ（ボタンで進める）</option>
         </select>
       </label>
+      <label class="door-pick" id="door-pick" hidden>ドア
+        <select id="door-case">
+          <option value="random">ランダム</option>
+          <option value="closed">閉まっている</option>
+          <option value="open">開いている</option>
+        </select>
+      </label>
+      <button type="button" class="btn small next-step" id="next-step" hidden>1つ進む</button>
       <button type="button" class="btn ghost" id="reset">最初のプログラムに戻す</button>
       <button type="button" class="btn ghost" id="share">リンクで共有</button>
     </div>
@@ -119,6 +130,13 @@
   <p>情報Ⅰ「アルゴリズムとプログラミング」の授業用教材です。進み具合とプログラムは、この端末のブラウザにだけ保存されます。</p>
 </footer>
 
+<dialog class="summary" id="summary" aria-labelledby="sum-title">
+  <div class="sum-head">
+    <h2 id="sum-title">まとめ</h2>
+    <button type="button" class="btn small" id="sum-close">閉じる</button>
+  </div>
+  <div id="sum-body"></div>
+</dialog>
 <script src="app.js"></script>
 </body>
 </html>

@@ -117,7 +117,7 @@ code { background: var(--color-paper-3); padding-inline: var(--space-2xs); white
 .help { font-size: var(--text-sm); color: var(--color-muted); line-height: 1.6; max-width: none; }
 .btn.small { height: 32px; padding-inline: var(--space-xs); font-size: var(--text-sm); font-weight: 500; }
 .speed { display: inline-flex; align-items: center; gap: var(--space-xs); font-size: var(--text-sm); font-weight: 500; color: var(--color-muted); }
-.speed select { height: 40px; padding-inline: var(--space-xs); border: var(--rule-bar) solid var(--color-ink); border-radius: 0; background: var(--color-paper-3); color: var(--color-ink); }
+.speed select, .door-pick select { height: 40px; padding-inline: var(--space-xs); border: var(--rule-bar) solid var(--color-ink); border-radius: 0; background: var(--color-paper-3); color: var(--color-ink); }
 
 /* ---------- 盤面 ---------- */
 .world { display: flex; min-height: 250px; max-height: 70svh; overflow: auto; padding: var(--space-md); background: var(--color-paper-2); border: var(--rule-bar) solid var(--color-ink); position: relative; }
@@ -295,3 +295,74 @@ code { background: var(--color-paper-3); padding-inline: var(--space-2xs); white
 .pin rect { fill: none; stroke: var(--color-accent-2-deep); stroke-width: 3; stroke-dasharray: 6 4; }
 .pin text { font-size: 11px; font-weight: 700; fill: var(--color-accent-2-deep); }
 .result .guess { font-weight: 700; }
+
+/* ---------- 説明をたたむ ---------- */
+.fold { align-self: flex-start; }
+.guide.folded .body > :not(.task) { display: none; }
+.guide.folded .body { columns: auto; }
+.guide.folded { padding-block: var(--space-sm); align-items: center; }
+.guide.folded .ref { display: none; }
+
+/* ---------- 高さの低い画面（Windows の表示スケール 125%・150% やブラウザの拡大） ---------- */
+@media (max-height: 820px) and (min-width: 761px) {
+  .top { padding-block: var(--space-xs); flex-wrap: nowrap; gap: var(--space-xs) var(--space-md); }
+  .brand-mark { width: 24px; height: 24px; }
+  .brand h1 { font-size: var(--text-lg); }
+  .toc-now { display: none; }
+  .top .steps { flex: 0 1 auto; min-width: 0; }
+  .step { height: 34px; }
+  .guide { padding-block: var(--space-sm); gap: var(--space-xs) var(--space-lg); }
+  .guide h2 { font-size: var(--text-xl); gap: var(--space-sm); }
+  .guide h2 .num { width: 44px; height: 44px; font-size: var(--text-2xl); }
+  .guide .body { columns: auto; display: flex; flex-direction: column; max-height: 32svh; overflow-y: auto; padding-right: var(--space-xs); }
+  .guide .body .task { order: -1; }
+  .guide.folded .body { max-height: none; overflow: visible; }
+  .world { max-height: max(220px, calc(100svh - 230px)); min-height: 200px; }
+  .tools, .samples { gap: var(--space-2xs); }
+  .chip { min-height: 28px; padding-block: 0; }
+}
+@media (max-height: 820px) and (min-width: 761px) and (max-width: 1180px) {
+  .brand h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
+/* ---------- 1つずつ実行・ドアの選択 ---------- */
+.door-pick { display: inline-flex; align-items: center; gap: var(--space-xs); font-size: var(--text-sm); }
+.next-step { position: fixed; right: var(--space-md); bottom: var(--space-md); z-index: 15; height: auto; min-height: 56px; max-width: min(420px, calc(100vw - 2 * var(--space-md))); display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3xs); padding: var(--space-xs) var(--space-md); background: var(--color-accent-3); color: var(--color-ink); border: var(--rule-box) solid var(--color-ink); }
+.next-step b { font-size: var(--text-md); }
+.next-step span { font-family: var(--font-outlier); font-size: var(--text-sm); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+
+/* ---------- 授業モード ---------- */
+.teach-badge { flex: none; white-space: nowrap; display: inline-flex; align-items: center; gap: var(--space-xs); padding: var(--space-2xs) var(--space-2xs) var(--space-2xs) var(--space-sm); background: var(--color-ink); color: var(--color-paper-3); font-weight: 700; font-size: var(--text-sm); }
+.teach-badge .btn { background: var(--color-paper-3); color: var(--color-ink); }
+.teach-badge .btn:focus-visible { outline-color: var(--color-accent-3); }
+.teach-badge:not([hidden]) + #big { margin-left: 0; }
+.top:has(.teach-badge:not([hidden])) .teach-badge { margin-left: auto; }
+html.teach { font-size: 115%; }
+html.teach .container { max-width: none; padding-inline: var(--space-lg); }
+@media (min-width: 761px) {
+  html.teach .top { flex-wrap: nowrap; }
+  html.teach .top .steps { flex: 0 1 auto; min-width: 0; }
+}
+html.teach .world { max-height: 78svh; }
+html.teach .btn:not(.ghost), html.teach .speed select, html.teach .door-pick select { height: auto; min-height: 40px; padding-block: var(--space-sm); }
+html.teach .chip { padding-block: var(--space-xs); }
+
+/* ---------- まとめ ---------- */
+.summary { width: min(960px, 94vw); max-height: 90svh; padding: var(--space-lg); border: var(--rule-box) solid var(--color-ink); background: var(--color-paper); color: var(--color-ink); }
+.summary::backdrop { background: color-mix(in srgb, var(--color-ink) 55%, transparent); }
+.sum-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-sm); padding-bottom: var(--space-sm); margin-bottom: var(--space-md); border-bottom: var(--rule-bar) solid var(--color-ink); }
+.sum-head h2 { font-size: var(--text-xl); max-width: none; }
+#sum-body { display: flex; flex-direction: column; gap: var(--space-sm); }
+#sum-body h3 { margin-top: var(--space-sm); }
+#sum-body .actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-xs); }
+.sum-score { font-weight: 700; font-size: var(--text-lg); }
+.sum-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--space-sm); }
+.sum-card { display: flex; flex-direction: column; gap: var(--space-xs); padding: var(--space-sm); border: var(--rule-bar) solid var(--color-ink); background: var(--color-paper-3); }
+.sum-card h3 { margin: 0; padding: var(--space-2xs) var(--space-xs); align-self: flex-start; }
+.sum-card.seq h3 { background: var(--color-accent); color: var(--color-accent-ink); }
+.sum-card.loop h3 { background: var(--color-accent-3); color: var(--color-ink); }
+.sum-card.sel h3 { background: var(--color-accent-2-deep); color: var(--color-accent-ink); }
+.sum-card pre { margin: 0; padding: var(--space-xs); background: var(--color-paper); border: var(--rule-hair) solid var(--color-ink); font-size: var(--text-sm); overflow-x: auto; }
+.sum-list { margin: 0; padding-left: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-2xs); }
+.sum-label { font-size: var(--text-sm); font-weight: 700; }
+.sum-note { width: 100%; padding: var(--space-xs); border: var(--rule-bar) solid var(--color-ink); background: var(--color-paper-3); color: var(--color-ink); resize: vertical; }

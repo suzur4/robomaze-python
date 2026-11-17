@@ -65,12 +65,20 @@ python3 -m http.server 8000
 模様: `forward(100)` `back(50)` `left(90)` `right(90)` `color("red")` `width(3)`
 `pen_up()` `pen_down()` `goto(x, y)` `dot()` `dot(x, y)`
 
+## 授業で使うとき
+
+- 授業モード：URL の最後に `?teach` を付けて開く（目次の下のボタンでも切りかえられる）。
+  画面いっぱいに大きく表示し、ヒントを全部見せ、ドアの開き方（開いている・閉まっている）を選んで実行できる
+- 1行ずつ実行：迷路のステップで「速さ」を「1つずつ」にすると、ボタンを押すたびに1つ進む
+- まとめ：各時間の最後と目次から開ける。ふりかえりを書いてコピーできる
+- 記録の消去：共用のパソコンでは、目次の下の「この端末の記録をすべて消す」か、URL に `?reset=1` を付けて開く
+
 ## 保存されるもの
 
-進み具合と書いたプログラムは、その端末のブラウザ（localStorage）にだけ保存される。
+進み具合と書いたプログラム、★、ふりかえりは、その端末のブラウザ（localStorage）にだけ保存される。
 外部には何も送らない。
 
 ## 使っているもの
 
 - [Pyodide](https://pyodide.org/)（Mozilla Public License 2.0）
-- Google Fonts: Jost、Zen Kaku Gothic New、M PLUS 1 Code（SIL Open Font License）
+- フォント: Jost、Zen Kaku Gothic New、M PLUS 1 Code（SIL Open Font License、`fonts/` に同梱。学校のネットワークでも読み込める）
