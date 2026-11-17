@@ -87,6 +87,7 @@ code { background: var(--color-paper-3); padding-inline: var(--space-2xs); white
 .gutter { flex: 0 0 40px; padding-block: var(--space-sm); text-align: right; color: var(--color-muted); background: var(--color-paper-2); user-select: none; overflow: hidden; font-variant-numeric: tabular-nums; }
 .gutter div { height: 1.625em; padding-right: var(--space-xs); }
 .gutter div.on, .gutter div.err { background: var(--color-ink); color: var(--color-paper-3); }
+.gutter div.err::before { content: "!"; float: left; padding-left: var(--space-2xs); font-weight: 700; color: var(--color-accent-3); }
 .code-wrap { position: relative; flex: 1 1 auto; min-width: 0; overflow: hidden; }
 .hl { position: absolute; left: 0; right: 0; top: var(--space-sm); height: 1.625em; background: var(--color-paper); border-block: var(--rule-hair) solid var(--color-ink); pointer-events: none; }
 .hl.err { border-block-width: var(--rule-box); }

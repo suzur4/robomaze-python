@@ -80,7 +80,7 @@ const STAGES = [
     title: "道順を設計して、自分で書く",
     body: `
       <p>ここからは手本がありません。先に道順を紙に書き（設計）、プログラムにして（コーディング）、実行して確かめます（テスト）。教科書 p.166 の3つの手順です。</p>
-      <p class="task">順番・くり返し・場合分けを全部使って、ゴールまで進めましょう。</p>
+      <p class="task">順番・くり返し・場合分けを使って、ゴールまで進めましょう。くり返しが使えるところは for にまとめます。</p>
       <p><code>#</code> から右はメモです。実行されません。</p>`,
     map: ["##########", "#S...#####", "####.#####", "####.....#", "########.#", "########G#", "##########"],
     tools: ["forward", "left", "right", "open", "for", "ifdoor"],
@@ -179,7 +179,7 @@ STAGES.push(
     body: `
       <p>60点と80点の平均を求めるプログラムです。でも、このままでは動きません。</p>
       <p>まず実行して、何行目でどんなエラーが出るかを読みましょう。直して動いたら、答えが正しいかも確かめます。</p>
-      <p class="task">平均の 70 が表示されるように直しましょう。直すところは2つあります。</p>`,
+      <p class="task">平均の 70.0 が表示されるように直しましょう。直すところは2つあります（わり算の答えは 70.0 のように小数で表示されます）。</p>`,
     tools: [],
     code: "a = 60\nb = 80\naverage = a + b / 2\nprint(averge)\n",
     check: (r) => {
@@ -200,7 +200,7 @@ STAGES.push(
       <p>余りが 0 なら約数、そうでなければ約数ではありません。</p>
       <p class="task">a を 91 に変えて、91 の約数になる b を、1 と 91 以外で見つけましょう。</p>`,
     tools: ["print"],
-    code: "a = 131\nb = 7\nrmndr = a % b\nif rmndr == 0:\n    print(\"約数である\")\nelse:\n    print(\"約数ではない\")\n",
+    code: "a = 131\nb = 5\nrmndr = a % b\nif rmndr == 0:\n    print(\"約数である\")\nelse:\n    print(\"約数ではない\")\n",
     check: (r) => {
       const a = r.num("a"), b = r.num("b");
       if (a !== 91) return [false, "まず1行目の a を 91 にしよう。そのあと b を変えて試します。"];
@@ -280,7 +280,10 @@ STAGES.push(
     code: "def myround(x):\n    y = x + 0.5\n    return int(y)\n\ndef bigger(a, b):\n    return a\n\nprint(myround(7.4))\nprint(myround(7.5))\nprint(bigger(3, 8))\nprint(bigger(9, 2))\n",
     check: (r) => {
       if (same(r.lines, ["7", "8", "8", "9"])) return [true, "1つの関数を、引数を変えて何度も使えました。関数の中の変数（a や y）は、関数の外の変数とは別の箱です（教科書 p.173 ローカル変数）。"];
-      return [false, `bigger の結果が ${r.lines.slice(2).join(" と ") || "なし"} です。8 と 9 になるように、if を使って直そう。`];
+      if (r.lines.includes("None")) return [false, "None（何もない）が表示されました。関数の中で print していませんか。結果は print ではなく return で返します。"];
+      const got = r.lines.slice(2);
+      if (same(got, ["3", "9"])) return [false, "bigger が、いつも a を返しています。b のほうが大きいときは b を返すように、if を使って直そう。"];
+      return [false, `bigger の結果が ${got.join(" と ") || "なし"} です。8 と 9 になるように、if を使って直そう。`];
     },
   },
   {
@@ -289,10 +292,11 @@ STAGES.push(
     title: "同じ動きに名前を付ける",
     body: `
       <p>この迷路は、同じ動きが階段のようにくり返されます。<code>def step():</code> で、その動きに step という名前を付けました。</p>
-      <p class="task">関数 step を使って、ゴールまで進めましょう。step を何回呼べばよいか、最後に何が足りないかを考えます。</p>`,
+      <p class="task">関数 step を使って、ゴールまで進めましょう。ゴールに着いたら、そこで止まらないといけません。step を何回呼べばよいか、最後に何が足りないかを考えます。</p>`,
     map: ["########", "#S.#####", "##..####", "###..###", "####..##", "#####G##", "########"],
     tools: ["forward", "left", "right", "for", "call"],
     code: "def step():\n    forward()\n    right()\n    forward()\n    left()\n\nstep()\n",
+    need: (code) => (/^\s*def\s+step\b/m.test(code) && /^\s*step\(\)/m.test(code) ? "" : "ゴールできましたが、関数 step を作って呼び出していません。step を使って書き直してみよう。"),
   },
 
   /* ---------------- 第5時 探索 */
@@ -325,6 +329,7 @@ STAGES.push(
     check: (r) => {
       const t = r.num("target"), comp = r.num("comp"), codes = r.list("codes");
       const lin = codes.indexOf(t) + 1;
+      if (lin === 0) return [false, `${t} はリストにないので、見つかりませんでした。二分探索は ${comp} 回くらべて「ない」とわかりました（線形探索なら最後まで ${codes.length} 回）。次は 10001 など、リストにある番号で試そう。`];
       if (t !== 10009 && lin > 0) return [true, `${t} は、線形探索なら ${lin} 回、二分探索なら ${comp} 回で見つかります。`];
       return [false, `${t} は ${comp} 回で見つかりました。線形探索なら ${lin > 0 ? lin : codes.length} 回です。target をほかの番号に変えて、もう一度くらべよう。`];
     },
@@ -382,7 +387,7 @@ const HINTS = {
   "3-4": ["15 は 3 でも 5 でも割り切れます。今のプログラムだと、15 のとき何が表示されるでしょう。", "「3 と 5 の両方で割り切れる」は「15 で割り切れる」と同じです。これを最初に調べます。", "if i % 15 == 0: を一番上にして、elif i % 3 == 0:、elif i % 5 == 0:、else: の順に並べよう。"],
   "4-1": ["リストの添字は 0 から数えます。a[0] は 7 です。", "49 は 7 × 7 です。右の欄で 49 の下の番号を見よう。", "最後の行を print(a[6]) にしよう。"],
   "4-2": ["myround はそのままでかまいません。直すのは bigger です。", "a が b より大きいときは a を、そうでなければ b を返します。", "bigger の中を if a > b: → return a、else: → return b にしよう。"],
-  "4-3": ["step() を1回呼ぶと、ロボットは階段を1段おります。", "ゴールまで、階段は何段あるでしょう。", "for i in range(4): の下に step() を書いてみよう。"],
+  "4-3": ["step() を1回呼ぶと、ロボットは階段を1段おります。最後の left() で、次の段のほうを向きます。", "step() を4回呼ぶと、ゴールに着いたあとにも left() が残ってしまいます。", "for i in range(3): で step() を3回呼び、最後の1段は forward()、right()、forward() と書こう。"],
   "5-1": ["target の数を書きかえて実行します。", "comp が比べた回数です。右の欄で i が動く様子も見よう。", "最後に target = 10011 にして実行しよう。"],
   "5-2": ["imid が真ん中の位置です。比べるたびに、探す範囲が半分になります。", "target を 10001 にして実行しよう。", "10001 で何回だったか、線形探索の回数とくらべよう。"],
   "6-1": ["if data[i] > data[i + 1]: の行が「入れ替えるかどうか」を決めています。", "> を逆向きにすると、どうなるでしょう。", "その行を if data[i] < data[i + 1]: にしよう。"],
@@ -404,8 +409,15 @@ const LIFE = {
   "6-1": "通販サイトの「価格の安い順」も、並べ替えのアルゴリズムで作られています。",
 };
 /* 迷路の最短チャレンジ。空行と # のメモをのぞいた行数が、この数以下なら ★。 */
-const GOAL_LINES = { 2: 2, 3: 8, 4: 13, 5: 15, "4-3": 7 };
-const countLines = (code) => code.split("\n").filter((l) => l.trim() && !l.trim().startsWith("#")).length;
+const GOAL_LINES = { 2: 2, 3: 8, 4: 13, 5: 15, "4-3": 10 };
+/* 命令の数を数える。; で1行に並べたり、for の行に続けて書いたりしても、1つずつ数える。 */
+const countLines = (code) => code.split("\n").reduce((n, l) => {
+  const t = l.replace(/("[^"]*"|'[^']*')/g, "\"\"").replace(/#.*$/, "").trim();
+  if (!t) return n;
+  const parts = t.split(";").filter((x) => x.trim()).length || 1;
+  const inline = /^(for|if|elif|else|while|def)\b.*:\s*\S/.test(t) ? 1 : 0;
+  return n + parts + inline;
+}, 0);
 
 const LESSONS = [[1, "アルゴリズム"], [2, "変数"], [3, "分岐と反復"], [4, "リストと関数"], [5, "探索"], [6, "整列"]];
 {
@@ -496,6 +508,9 @@ function refreshGutter() {
     for (let i = 1; i <= n; i++) ui.gutter.appendChild(h("div", "", String(i)));
   }
   ui.code.style.height = Math.min(Math.max(n + 1, 7), 18) * LH + PAD * 2 + "px";
+  // 行番号の欄は、プログラムの欄と同じ高さにして一緒にスクロールさせる
+  ui.gutter.style.height = ui.code.style.height;
+  ui.gutter.style.boxSizing = "border-box";
   ui.gutter.scrollTop = ui.code.scrollTop;
 }
 let marked = null; // {line, err}
@@ -511,6 +526,7 @@ function markLine(line, err) {
     const top = PAD + (line - 1) * LH;
     if (top < ui.code.scrollTop || top + LH > ui.code.scrollTop + ui.code.clientHeight) {
       ui.code.scrollTop = Math.max(0, top - LH * 2);
+      ui.gutter.scrollTop = ui.code.scrollTop;
     }
     ui.hl.style.top = top - ui.code.scrollTop + "px";
   }
@@ -577,32 +593,76 @@ ui.code.addEventListener("keydown", (ev) => {
   }
 });
 
-/* else / elif を入れるとき、対応する if と同じ字下げを探す */
-function ifIndent(v, lineStart, cur) {
-  const lines = v.slice(0, lineStart).split("\n");
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const l = lines[i], n = l.match(/^ */)[0].length;
-    if (!l.trim()) continue;
-    if (n <= cur && /^\s*(if|elif)\b/.test(l)) return " ".repeat(n);
-    if (n < cur - 4) break;
-  }
-  return " ".repeat(Math.max(0, cur - 4));
+function replaceAll(next, caret) {
+  const ta = ui.code;
+  ta.focus();
+  ta.setSelectionRange(0, ta.value.length);
+  insertText(next);
+  if (ta.value !== next) ta.value = next;
+  ta.setSelectionRange(caret, caret);
+  onEdit();
 }
+const indentOf = (l) => l.match(/^ */)[0].length;
+const isHeader = (l) => !/^\s*#/.test(l) && /:\s*(#.*)?$/.test(l);
 function insertSnippet(text, opensBlock) {
-  const ta = ui.code, v = ta.value, pos = ta.selectionStart;
-  const ls = v.lastIndexOf("\n", pos - 1) + 1;
-  let le = v.indexOf("\n", pos); if (le < 0) le = v.length;
-  const line = v.slice(ls, le);
+  const ta = ui.code, v = ta.value, a = ta.selectionStart, b = ta.selectionEnd;
+  const lines = v.split("\n");
+  const li = v.slice(0, a).split("\n").length - 1;
+  const lj = Math.max(li, v.slice(0, b > a && v[b - 1] === "\n" ? b - 1 : b).split("\n").length - 1);
+  const line = lines[li];
+  const lineStart = (k) => lines.slice(0, k).join("\n").length + (k ? 1 : 0);
+  const branch = /^(elif|else)\b/.test(text);
+
+  // else / elif は、対応する if のまとまりの最後に、if と同じ字下げで入れる
+  if (branch) {
+    let k = li, found = -1;
+    const cur = line.trim() ? indentOf(line) : indentOf(line) || 99;
+    for (; k >= 0; k--) {
+      const l = lines[k];
+      if (!l.trim()) continue;
+      if (/^\s*(if|elif)\b/.test(l) && isHeader(l) && indentOf(l) <= cur) { found = k; break; }
+      if (k < li && indentOf(l) < Math.min(cur, indentOf(line)) - 4) break;
+    }
+    if (found >= 0) {
+      const ind = indentOf(lines[found]);
+      let j = found + 1;
+      for (;;) {
+        while (j < lines.length && (!lines[j].trim() || indentOf(lines[j]) > ind)) j++;
+        const l = lines[j];
+        if (j < lines.length && indentOf(l) === ind && /^\s*(elif|else)\b/.test(l)) {
+          if (text.startsWith("elif") && /^\s*else\b/.test(l)) break;
+          j++; continue;
+        }
+        break;
+      }
+      while (j - 1 > found && !lines[j - 1].trim()) j--;
+      const pad = " ".repeat(ind);
+      const add = [pad + text].concat(opensBlock ? [pad + "    "] : []);
+      const next = lines.slice(0, j).concat(add, lines.slice(j)).join("\n");
+      const caret = lineStart(j) + add.join("\n").length;
+      replaceAll(next, caret);
+      return;
+    }
+  }
+
+  // if / for / while は、今の行（選んだ行）をそのまま中に入れる
+  if (opensBlock && !branch && line.trim() && !isHeader(line)) {
+    const ind = indentOf(line), pad = " ".repeat(ind);
+    const body = lines.slice(li, lj + 1).map((l) => (l.trim() ? "    " + l : l));
+    const next = lines.slice(0, li).concat([pad + text], body, lines.slice(lj + 1)).join("\n");
+    const caret = lineStart(li) + pad.length + text.length + 1 + body.join("\n").length;
+    replaceAll(next, caret);
+    return;
+  }
+
+  const ls = lineStart(li), le = ls + line.length;
   const indent = line.match(/^ */)[0];
   ta.focus();
-  const branch = /^(elif|else)\b/.test(text);
   if (line.trim() === "") {
-    const use = branch ? ifIndent(v, ls, indent.length) : indent;
     ta.setSelectionRange(ls, le);
-    insertText(use + text + (opensBlock ? "\n" + use + "    " : ""));
+    insertText(indent + text + (opensBlock ? "\n" + indent + "    " : ""));
   } else {
-    const inner = !/^\s*#/.test(line) && /:\s*(#.*)?$/.test(line) ? indent + "    " : indent;
-    const use = branch ? ifIndent(v, ls, indent.length) : inner;
+    const use = isHeader(line) ? indent + "    " : indent;
     ta.setSelectionRange(le, le);
     insertText("\n" + use + text + (opensBlock ? "\n" + use + "    " : ""));
   }
@@ -1030,7 +1090,8 @@ async function showCase(key, token) {
   world.reset(res.doorStart);
   setPlaying(true);
   await sleep(160);
-  const ms = Number(ui.speed.value);
+  // 動きが多いときは、全体が長くなりすぎないように速める
+  const ms = Math.max(40, Number(ui.speed.value) * Math.min(1, 30 / Math.max(1, res.actions.length)));
   document.documentElement.style.setProperty("--dur", Math.round(ms * 0.9) + "ms");
   for (const a of res.actions) {
     if (token !== runToken) return;
@@ -1089,13 +1150,14 @@ function errorBlock(res) {
     return out;
   }
   const er = res.error;
-  const name = er.kind === "syntax" ? "文法エラー" : er.kind === "logic" ? "論理エラー" : "エラー";
+  const name = er.kind === "syntax" ? "文法エラー" : er.kind === "logic" ? "論理エラー" : er.kind === "usage" ? "使い方のエラー" : "エラー";
   head.appendChild(h("span", "badge " + er.kind, name));
   head.appendChild(document.createTextNode(er.line ? `${er.line}行目` : "プログラム"));
   out.push(head, h("p", "", er.message));
   if (er.raw) out.push(h("p", "raw", er.raw));
   if (er.kind === "syntax") out.push(h("p", "sub", "文法エラーは、書き方の間違いでプログラムが正しく実行できない状態です（教科書 p.166）。"));
   if (er.kind === "logic") out.push(h("p", "sub", "論理エラーは、実行はできたのに結果が目的と違う状態です（教科書 p.166）。"));
+  if (er.kind === "usage") out.push(h("p", "sub", "命令の ( ) の中身や、使える命令がちがっています。書き方は正しいので、使い方を直せば動きます。"));
   return out;
 }
 function caseLine(res) {
@@ -1133,12 +1195,18 @@ function finishRun() {
   if (stage.kind === "draw") {
     if (res.status === "done") {
       const lines = res.actions.filter((a) => a[0] === "L").length, dots = res.actions.filter((a) => a[0] === "D").length;
-      const what = [lines ? `線 ${lines} 本` : "", dots ? `点 ${dots} 個` : ""].filter(Boolean).join("、") || "何も描かれていません";
+      const what = [lines ? `線 ${lines} 本` : "", dots ? `点 ${dots} 個` : ""].filter(Boolean).join("、");
+      if (!what) { setResult("half", [h("p", "head", "最後まで実行できましたが、何も描かれていません"), h("p", "", "forward(100) などの命令で、線を描いてみよう。")]); return; }
+      const cols = [...new Set(res.actions.map((a) => (a[0] === "L" ? a[5] : a[0] === "D" ? a[3] : null)).filter(Boolean))];
+      const badCol = cols.filter((c) => !(window.CSS && CSS.supports("color", c)));
       const save = h("button", "btn small", "画像を保存"); save.type = "button";
       save.addEventListener("click", () => world.savePng());
       const acts = nextButton() || h("div", "actions");
       acts.prepend(save);
-      setResult("ok", [h("p", "head", "最後まで実行できました"), h("p", "", what), acts]);
+      const kidsD = [h("p", "head", "最後まで実行できました"), h("p", "", what)];
+      if (badCol.length) kidsD.push(h("p", "", `色の名前「${badCol.join("」「")}」はわかりませんでした（黒で描いています）。red、blue、tomato のように英語で書こう。`));
+      kidsD.push(acts);
+      setResult("ok", kidsD);
       markCleared();
     } else setResult("bad", errorBlock(res));
     return;
@@ -1156,7 +1224,11 @@ function finishRun() {
     $("predict").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", "false"));
   }
   let cls = "bad";
-  if (allPass) {
+  const needMsg = allPass && stage.need ? stage.need(last.code) : "";
+  if (needMsg) {
+    cls = "half";
+    kids.push(h("p", "head", "ゴールできました。あと一歩です"), h("p", "", needMsg));
+  } else if (allPass) {
     cls = "ok";
     kids.push(h("p", "head", stage.door ? "クリア。開いていても閉まっていても、ゴールできました" : "ゴール。クリアです"));
     const tip = stage.tip ? stage.tip(last.flow) : "";
@@ -1195,7 +1267,7 @@ function finishRun() {
     }
     kids.push(ul);
   }
-  if (allPass) { kids.push(nextButton()); markCleared(); renderSteps(); }
+  if (allPass && !needMsg) { kids.push(nextButton()); markCleared(); renderSteps(); }
   setResult(cls, kids);
 }
 function nextButton() {

@@ -18,14 +18,18 @@ import sys
 import unicodedata
 
 USER_FILE = "<あなたのプログラム>"
-MAX_LINES = 300_000      # これを超えて行を実行したら「くり返しが終わらない」とみなす
-MAX_MAZE_ACTIONS = 400
+MAX_LINES = 1_000_000     # これを超えて行を実行したら「くり返しが終わらない」とみなす
+MAX_MAZE_ACTIONS = 150
 MAX_DRAW_ACTIONS = 30_000
 
 
 class RobotStop(BaseException):
     """ロボットが止まった（壁にぶつかった等）。論理エラーとして扱う。
     生徒の except Exception: でつかまらないように BaseException から作る。"""
+
+
+class RobotUsage(RobotStop):
+    """命令の使い方の間違い（( ) の中身、使えない命令など）。"""
 
 
 class _Finished(BaseException):
@@ -44,7 +48,7 @@ def _user_line():
 
 def _no_args(name, args, kwargs):
     if args or kwargs:
-        raise RobotStop(
+        raise RobotUsage(
             f"{name}() の ( ) の中には何も書きません。"
             f"迷路では {name}() と書くと1回分だけ動きます。"
         )
@@ -85,14 +89,19 @@ class Maze:
 
     def rec(self, **a):
         if len(self.actions) >= MAX_MAZE_ACTIONS:
-            raise RobotStop("命令の回数が多すぎます。くり返しの回数を確認しよう。")
+            raise RobotStop("命令の回数が多すぎます（150回より多く動きました）。くり返しの回数を確認しよう。")
         a["line"] = _user_line()
         self.actions.append(a)
+
+    def after_goal(self):
+        if self.goal:
+            self.rec(t="bump")
+            raise RobotStop("もうゴールしています。ゴールのあとにも命令が残っています。ゴールで止まるように、最後の命令を確かめよう。")
 
     def check(self, name):
         if name in self.disabled:
             self.rec(t="bump")
-            raise RobotStop(f"この迷路では {name}() が故障していて使えません。")
+            raise RobotUsage(f"この迷路では {name}() が故障していて使えません。")
 
     # --- 生徒が使う命令 ---
     def forward(self, *args, **kwargs):
@@ -118,17 +127,20 @@ class Maze:
     def left(self, *args, **kwargs):
         _no_args("left", args, kwargs)
         self.check("left")
+        self.after_goal()
         self.dir = (self.dir - 1) % 4
         self.rec(t="turn", d=-1)
 
     def right(self, *args, **kwargs):
         _no_args("right", args, kwargs)
         self.check("right")
+        self.after_goal()
         self.dir = (self.dir + 1) % 4
         self.rec(t="turn", d=1)
 
     def open_door(self, *args, **kwargs):
         _no_args("open_door", args, kwargs)
+        self.after_goal()
         if not self.facing_door():
             self.rec(t="bump")
             raise RobotStop("目の前にドアがありません。ドアの前まで進んでから開けよう。")
@@ -169,13 +181,13 @@ class Pen:
     @staticmethod
     def num(name, v, what):
         if isinstance(v, bool) or not isinstance(v, (int, float)):
-            raise RobotStop(f"{name}( ) の中には{what}を数で書きます。例: {name}(100)")
+            raise RobotUsage(f"{name}( ) の中には{what}を数で書きます。例: {name}(100)")
         try:
             f = float(v)
         except OverflowError:
             f = math.inf
         if not math.isfinite(f) or abs(f) > 1e6:
-            raise RobotStop(f"{name}( ) の数が大きすぎます。-1000000 から 1000000 までの数にしよう。")
+            raise RobotUsage(f"{name}( ) の数が大きすぎます。-1000000 から 1000000 までの数にしよう。")
         return f
 
     def _go(self, nx, ny):
@@ -189,51 +201,51 @@ class Pen:
 
     def forward(self, *args):
         if len(args) != 1:
-            raise RobotStop("ここでは forward(100) のように、進む長さを ( ) の中に書きます。")
+            raise RobotUsage("ここでは forward(100) のように、進む長さを ( ) の中に書きます。")
         d = self.num("forward", args[0], "進む長さ")
         r = math.radians(self.h)
         self._go(self.x + d * math.cos(r), self.y + d * math.sin(r))
 
     def back(self, *args):
         if len(args) != 1:
-            raise RobotStop("back(50) のように、下がる長さを ( ) の中に書きます。")
+            raise RobotUsage("back(50) のように、下がる長さを ( ) の中に書きます。")
         self.forward(-self.num("back", args[0], "下がる長さ"))
 
     def left(self, *args):
         if len(args) != 1:
-            raise RobotStop("ここでは left(90) のように、回る角度を ( ) の中に書きます。")
+            raise RobotUsage("ここでは left(90) のように、回る角度を ( ) の中に書きます。")
         self.h = (self.h + self.num("left", args[0], "回る角度")) % 360
         self.rec("T", round(self.h, 2))
 
     def right(self, *args):
         if len(args) != 1:
-            raise RobotStop("ここでは right(90) のように、回る角度を ( ) の中に書きます。")
+            raise RobotUsage("ここでは right(90) のように、回る角度を ( ) の中に書きます。")
         self.h = (self.h - self.num("right", args[0], "回る角度")) % 360
         self.rec("T", round(self.h, 2))
 
     def color(self, *args):
         if len(args) != 1 or not isinstance(args[0], str):
-            raise RobotStop('color("red") のように、色の名前を " " で囲んで書きます。')
+            raise RobotUsage('color("red") のように、色の名前を " " で囲んで書きます。')
         self.col = args[0]
 
     def width(self, *args):
         if len(args) != 1:
-            raise RobotStop("width(3) のように、線の太さを書きます。")
+            raise RobotUsage("width(3) のように、線の太さを書きます。")
         self.w = max(0.5, min(30.0, self.num("width", args[0], "線の太さ")))
 
     def pen_up(self, *args, **kwargs):
         if args or kwargs:
-            raise RobotStop("pen_up() の ( ) の中には何も書きません。")
+            raise RobotUsage("pen_up() の ( ) の中には何も書きません。")
         self.down = False
 
     def pen_down(self, *args, **kwargs):
         if args or kwargs:
-            raise RobotStop("pen_down() の ( ) の中には何も書きません。")
+            raise RobotUsage("pen_down() の ( ) の中には何も書きません。")
         self.down = True
 
     def goto(self, *args):
         if len(args) != 2:
-            raise RobotStop("goto(0, 100) のように、行き先の x と y を書きます。")
+            raise RobotUsage("goto(0, 100) のように、行き先の x と y を書きます。")
         self._go(self.num("goto", args[0], "x と y"), self.num("goto", args[1], "x と y"))
 
     def dot(self, *args):
@@ -242,7 +254,7 @@ class Pen:
         elif len(args) == 2:
             x, y = self.num("dot", args[0], "x と y"), self.num("dot", args[1], "x と y")
         else:
-            raise RobotStop("dot(x, y) のように、点を打つ場所の x と y を書きます。")
+            raise RobotUsage("dot(x, y) のように、点を打つ場所の x と y を書きます。")
         self.rec("D", round(x, 2), round(y, 2), self.col, max(self.w, 2))
 
 
@@ -260,7 +272,7 @@ def _tracer_factory(on_line=None):
                 return tracer
             count += 1
             if count > MAX_LINES:
-                raise RobotStop("くり返しが終わりません。while の条件や、くり返しの回数を確認しよう。")
+                raise RobotStop("くり返しが終わらないか、回数が多すぎます（100万行より多く実行しました）。while の条件や、くり返しの回数を確認しよう。")
             if on_line:
                 on_line(frame)
         return tracer
@@ -269,7 +281,7 @@ def _tracer_factory(on_line=None):
 
 
 def _no_input(*a, **k):
-    raise RobotStop("このページでは input() は使えません。数はプログラムの中に直接書こう。")
+    raise RobotUsage("このページでは input() は使えません。数はプログラムの中に直接書こう。")
 
 
 SYNTAX_JA = [
@@ -381,6 +393,8 @@ def _describe(e, names, code=""):
             line = tb.tb_lineno
         tb = tb.tb_next
 
+    if isinstance(e, RobotUsage):
+        return {"kind": "usage", "message": str(e), "line": line, "raw": ""}
     if isinstance(e, RobotStop):
         return {"kind": "logic", "message": str(e), "line": line, "raw": ""}
 
@@ -394,8 +408,17 @@ def _describe(e, names, code=""):
         lines = code.split("\n")
         src = lines[e.lineno - 1].strip() if e.lineno and 0 < e.lineno <= len(lines) else ""
         wide = _wide_char(msg) if "invalid character" in msg else None
+        import re
+        cap = re.search(r"(?<![\w.\"'])(For|If|Elif|Else|While|Def|Return|Import|Print|In|Range)\b", src)
         if wide:
             ja = wide
+        elif cap:
+            w = cap.group(1)
+            ja = f"Python は大文字と小文字を区別します。{w} ではなく {w.lower()} と、小文字で書こう。"
+        elif re.search(r"\w\s*(\+\+|--)\s*$", src):
+            ja = "Python には ++ や -- はありません。x = x + 1 のように書こう。"
+        elif re.search(r"[\w)]\s+[x×]\s+[\w(]", src):
+            ja = "かけ算の記号は * です。例: 7 * i"
         elif src.startswith("else if") or src.startswith("elseif"):
             ja = "Python では else if ではなく elif と書きます。例: elif x == 2:"
         elif (src.startswith("else") or src.startswith("elif")) and msg.startswith("invalid syntax"):
@@ -445,12 +468,13 @@ def _execute(code, api, on_line=None, env_out=None):
     try:
         compiled = compile(code, USER_FILE, "exec")
         tree = ast.parse(code, USER_FILE)
+        defs = {n.name for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)}
         for node in ast.walk(tree):
             if isinstance(node, ast.ExceptHandler) and (node.type is None or (isinstance(node.type, ast.Name) and node.type.id == "BaseException")):
                 return {"kind": "syntax", "line": node.lineno, "raw": "",
                         "message": "このページでは except: だけの書き方は使えません。except ValueError: のように、つかまえるエラーの種類を書こう。"}, ""
         for node in sorted((n for n in ast.walk(tree) if hasattr(n, "lineno")), key=lambda n: (n.lineno, n.col_offset)):
-            if isinstance(node, ast.Expr) and isinstance(node.value, ast.Name) and node.value.id in api:
+            if isinstance(node, ast.Expr) and isinstance(node.value, ast.Name) and (node.value.id in api or node.value.id in defs):
                 err = {"kind": "syntax", "line": node.lineno, "raw": "",
                        "message": f"{node.value.id} のあとに ( ) が必要です。{node.value.id}() と書こう。"}
                 return err, ""
