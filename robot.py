@@ -23,11 +23,12 @@ MAX_MAZE_ACTIONS = 400
 MAX_DRAW_ACTIONS = 30_000
 
 
-class RobotStop(Exception):
-    """ロボットが止まった（壁にぶつかった等）。論理エラーとして扱う。"""
+class RobotStop(BaseException):
+    """ロボットが止まった（壁にぶつかった等）。論理エラーとして扱う。
+    生徒の except Exception: でつかまらないように BaseException から作る。"""
 
 
-class _Finished(Exception):
+class _Finished(BaseException):
     """ゴールに着いたので、残りの命令は実行しない。"""
 
 
@@ -169,9 +170,17 @@ class Pen:
     def num(name, v, what):
         if isinstance(v, bool) or not isinstance(v, (int, float)):
             raise RobotStop(f"{name}( ) の中には{what}を数で書きます。例: {name}(100)")
-        return float(v)
+        try:
+            f = float(v)
+        except OverflowError:
+            f = math.inf
+        if not math.isfinite(f) or abs(f) > 1e6:
+            raise RobotStop(f"{name}( ) の数が大きすぎます。-1000000 から 1000000 までの数にしよう。")
+        return f
 
     def _go(self, nx, ny):
+        if not (math.isfinite(nx) and math.isfinite(ny)) or abs(nx) > 1e6 or abs(ny) > 1e6:
+            raise RobotStop("ロボットが遠くへ行きすぎました。進む長さを小さくしよう。")
         if self.down:
             self.rec("L", round(self.x, 2), round(self.y, 2), round(nx, 2), round(ny, 2), self.col, self.w)
         else:
@@ -212,10 +221,14 @@ class Pen:
             raise RobotStop("width(3) のように、線の太さを書きます。")
         self.w = max(0.5, min(30.0, self.num("width", args[0], "線の太さ")))
 
-    def pen_up(self):
+    def pen_up(self, *args, **kwargs):
+        if args or kwargs:
+            raise RobotStop("pen_up() の ( ) の中には何も書きません。")
         self.down = False
 
-    def pen_down(self):
+    def pen_down(self, *args, **kwargs):
+        if args or kwargs:
+            raise RobotStop("pen_down() の ( ) の中には何も書きません。")
         self.down = True
 
     def goto(self, *args):
@@ -243,6 +256,8 @@ def _tracer_factory(on_line=None):
         if frame.f_code.co_filename != USER_FILE:
             return None
         if event == "line":
+            if frame.f_lineno == 0:
+                return tracer
             count += 1
             if count > MAX_LINES:
                 raise RobotStop("くり返しが終わりません。while の条件や、くり返しの回数を確認しよう。")
@@ -269,6 +284,7 @@ SYNTAX_JA = [
     ("invalid non-printable", "全角スペースなど、見えない文字がまざっています。半角に直そう。"),
     ("unterminated string", '文字を囲む " が閉じられていません。'),
     ("Missing parentheses", "命令のあとに ( ) が必要です。"),
+    ("inconsistent use of tabs", "字下げに Tab とスペースがまざっています。スペース4つにそろえよう。"),
     ("Maybe you meant '=='", "くらべるときは = ではなく == を使います。= は箱に入れる（代入）ときの記号です。"),
     ("forgot a comma", "( ) の中で、区切りの , （カンマ）が抜けていないか確認しよう。"),
     ("invalid syntax", "書き方が Python のルールに合っていません。つづりと記号を確認しよう。"),
@@ -405,6 +421,8 @@ def _describe(e, names, code=""):
         return {"kind": "other", "message": "命令ではないものに ( ) を付けています。", "line": line, "raw": raw}
     if isinstance(e, ZeroDivisionError):
         return {"kind": "other", "message": "0 で割ることはできません。", "line": line, "raw": raw}
+    if isinstance(e, SystemExit):
+        return {"kind": "other", "message": "exit() や quit() はこのページでは使えません。プログラムは最後まで実行すると自然に終わります。", "line": line, "raw": raw}
     if isinstance(e, RecursionError):
         return {"kind": "logic", "message": "関数が自分を呼び出し続けて終わりません。終わる条件を確認しよう。", "line": line, "raw": raw}
     src_lines = code.split("\n")
@@ -428,6 +446,10 @@ def _execute(code, api, on_line=None, env_out=None):
         compiled = compile(code, USER_FILE, "exec")
         tree = ast.parse(code, USER_FILE)
         for node in ast.walk(tree):
+            if isinstance(node, ast.ExceptHandler) and (node.type is None or (isinstance(node.type, ast.Name) and node.type.id == "BaseException")):
+                return {"kind": "syntax", "line": node.lineno, "raw": "",
+                        "message": "このページでは except: だけの書き方は使えません。except ValueError: のように、つかまえるエラーの種類を書こう。"}, ""
+        for node in sorted((n for n in ast.walk(tree) if hasattr(n, "lineno")), key=lambda n: (n.lineno, n.col_offset)):
             if isinstance(node, ast.Expr) and isinstance(node.value, ast.Name) and node.value.id in api:
                 err = {"kind": "syntax", "line": node.lineno, "raw": "",
                        "message": f"{node.value.id} のあとに ( ) が必要です。{node.value.id}() と書こう。"}
@@ -452,7 +474,10 @@ def _execute(code, api, on_line=None, env_out=None):
         err = _describe(e, names, code)
     if env_out is not None:
         env_out.update(env)
-    return err, out.getvalue()[:4000]
+    text = out.getvalue()
+    if len(text) > 4000:
+        text = text[:4000] + "\n…（表示が長いので、ここから先は省略しました）\n"
+    return err, text
 
 
 def run_maze(code, stage_json, door_open):
@@ -509,6 +534,13 @@ _SIMPLE = (int, float, str, bool, type(None))
 
 def _show(v):
     """箱に入れて見せられる値だけを返す。見せられないものは None を返す。"""
+    try:
+        return _show_raw(v)
+    except ValueError:  # 桁が多すぎる整数など
+        return {"v": "（とても大きな数）"}
+
+
+def _show_raw(v):
     if isinstance(v, _SIMPLE):
         return {"v": repr(v) if isinstance(v, (str, float)) else str(v)}
     if isinstance(v, (list, tuple)) and len(v) <= 60 and all(isinstance(x, _SIMPLE) for x in v):

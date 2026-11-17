@@ -238,6 +238,9 @@ code { background: var(--color-paper-3); padding-inline: var(--space-2xs); white
 .toc-lesson.now h3 { text-decoration: underline; text-decoration-thickness: var(--rule-bar); text-underline-offset: 6px; }
 .toc-list { list-style: none; margin: 0; padding: var(--rule-bar); display: flex; flex-direction: column; gap: var(--rule-bar); background: var(--color-ink); }
 .toc-list .step { width: 100%; }
+.toc-foot { margin-top: auto; display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-xs); padding-top: var(--space-sm); border-top: var(--rule-hair) solid var(--color-rule); }
+.toc-foot p { font-size: var(--text-sm); color: var(--color-muted); }
+.result.ok :focus-visible { outline-color: var(--color-accent-3); }
 @media (min-width: 1700px) {
   html.toc-open body { padding-left: 300px; }
 }
@@ -275,6 +278,19 @@ code { background: var(--color-paper-3); padding-inline: var(--space-2xs); white
 .hint b { flex: none; }
 .hint:focus { outline: none; }
 .hint:focus-visible { outline: var(--rule-bar) solid var(--color-ink); outline-offset: 2px; }
+.life { display: flex; flex-direction: column; gap: var(--space-2xs); padding: var(--space-xs) var(--space-sm); background: var(--color-paper-3); border: var(--rule-hair) solid var(--color-ink); font-size: var(--text-sm); }
+.life b { font-size: var(--text-xs); }
 .challenge { font-size: var(--text-sm); font-weight: 700; }
 .result .star { font-weight: 700; }
 .linkbox { width: 100%; font: inherit; font-size: var(--text-sm); padding: var(--space-2xs) var(--space-xs); border: var(--rule-bar) solid var(--color-ink); background: var(--color-paper-3); color: var(--color-ink); }
+#st-head:focus, .result:focus { outline: none; }
+
+/* ---------- 予想してから実行 ---------- */
+.predict { display: flex; flex-direction: column; gap: var(--space-xs); }
+.predict[hidden] { display: none; }
+.predict p { font-weight: 700; font-size: var(--text-sm); }
+.predict-btns { display: flex; flex-wrap: wrap; gap: var(--space-2xs); }
+.predict-btns [aria-pressed="true"] { background: var(--color-ink); color: var(--color-paper-3); }
+.pin rect { fill: none; stroke: var(--color-accent-2-deep); stroke-width: 3; stroke-dasharray: 6 4; }
+.pin text { font-size: 11px; font-weight: 700; fill: var(--color-accent-2-deep); }
+.result .guess { font-weight: 700; }

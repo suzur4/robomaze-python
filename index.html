@@ -36,6 +36,10 @@
     <button type="button" class="btn small" id="toc-close">閉じる</button>
   </div>
   <nav id="lessons" aria-label="すべての時間とステップ"></nav>
+  <div class="toc-foot">
+    <p>共用のパソコンで、次の人のために記録を消すとき</p>
+    <button type="button" class="btn small" id="reset-all">この端末の記録をすべて消す</button>
+  </div>
 </aside>
 
 <section class="guide container" aria-labelledby="st-head">
@@ -87,6 +91,7 @@
 
   <section class="col stage" aria-labelledby="stage-title">
     <h3 id="stage-title">ロボット</h3>
+    <div class="predict" id="predict" hidden></div>
     <div class="world" id="world-frame" tabindex="0" role="group" aria-label="実行の様子。拡大したときは矢印キーでスクロールできます"><div class="world-in" id="world"></div></div>
     <div class="result idle" id="result" role="status" aria-live="polite"></div>
     <div class="output" id="output-box" hidden>

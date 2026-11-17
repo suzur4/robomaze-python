@@ -36,7 +36,7 @@ const TOOL = {
 
 const STAGES = [
   {
-    id: 1, tab: "順番", kind: "maze",
+    id: 1, tab: "順番", kind: "maze", predict: true,
     kicker: "順次構造　教科書 p.164", hue: "seq",
     title: "命令を上から順に並べる",
     body: `
@@ -47,7 +47,7 @@ const STAGES = [
     code: "forward()\nforward()\n",
   },
   {
-    id: 2, tab: "くり返し", kind: "maze",
+    id: 2, tab: "くり返し", kind: "maze", predict: true,
     kicker: "反復構造　教科書 p.164", hue: "loop",
     title: "同じ命令は、くり返しにまとめる",
     body: `
@@ -308,6 +308,7 @@ STAGES.push(
     code: CODES + "target = 10010\ncomp = 0\ni = 0\nfound = False\nwhile not found and i < len(codes):\n    comp = comp + 1\n    if codes[i] == target:\n        found = True\n    else:\n        i = i + 1\nif found:\n    print(\"在庫数\", stock[i])\nprint(\"比べた回数\", comp)\n",
     check: (r) => {
       const t = r.num("target"), comp = r.num("comp");
+      if (Number.isNaN(t) || Number.isNaN(comp) || !r.list("codes").length) return [false, "target、comp、codes のどれかがなくなっています。「最初のプログラムに戻す」で戻してから試そう。"];
       if (!r.list("codes").includes(t)) return [true, `見つからないときは、最後まで ${comp} 回比べました。データが多いほど、時間がかかります。`];
       return [false, `${t} は ${comp} 回で見つかりました。ほかの番号でも試し、最後にリストにない番号を探そう。`];
     },
@@ -387,6 +388,21 @@ const HINTS = {
   "6-1": ["if data[i] > data[i + 1]: の行が「入れ替えるかどうか」を決めています。", "> を逆向きにすると、どうなるでしょう。", "その行を if data[i] < data[i + 1]: にしよう。"],
   "6-2": ["まず実行して、件数と回数の表を見よう。", "最後の for の行に [10, 20, 40] というリストがあります。", "そのリストを [10, 20, 40, 1000] にしよう。"],
 };
+/* くらしとのつながり。各ステップの説明の下に出す。 */
+const LIFE = {
+  1: "カップ麺は「ふたを開ける → お湯を入れる → 3分待つ」。順番を入れかえると、うまくいきません。",
+  2: "洗濯機の「すすぎ2回」。同じ動きを、回数を決めてくり返しています。",
+  3: "自動ドアは、人がいるかをセンサーで調べて、いれば開け、いなければ閉めたままにします。",
+  4: "ロボット掃除機も「進む・曲がる・ぶつかったら向きを変える」の組み合わせで部屋を回ります。",
+  5: "右折できない交差点では、左折を3回して同じ向きに進むことがあります。使える命令だけで工夫するのもプログラミングです。",
+  6: "刺しゅうミシンや 3D プリンタも、「進む」「曲がる」の命令を並べて形を作っています。",
+  7: "シダの葉や雪の結晶のように、簡単な規則のくり返しから複雑な形が生まれます。映画やゲームの CG の木や山も、この考え方で作られています。",
+  "2-1": "レジは「値段 × 個数」を計算して、合計の箱に足していきます。",
+  "3-1": "カレンダーアプリは、割り算の余りを使って曜日やうるう年を判定しています。",
+  "5-1": "ネットショップで商品番号を入れると、在庫のリストから探し出します。",
+  "5-2": "辞書を引くとき、真ん中あたりを開いて前か後ろかを決めるのは二分探索と同じです。",
+  "6-1": "通販サイトの「価格の安い順」も、並べ替えのアルゴリズムで作られています。",
+};
 /* 迷路の最短チャレンジ。空行と # のメモをのぞいた行数が、この数以下なら ★。 */
 const GOAL_LINES = { 2: 2, 3: 8, 4: 13, 5: 15, "4-3": 7 };
 const countLines = (code) => code.split("\n").filter((l) => l.trim() && !l.trim().startsWith("#")).length;
@@ -406,12 +422,16 @@ const store = (() => {
   let data = { code: {}, cleared: {}, last: 1, best: {}, hints: {} };
   try {
     const raw = localStorage.getItem(STORE_KEY);
-    if (raw) data = Object.assign(data, JSON.parse(raw));
-    data.best = data.best || {}; data.hints = data.hints || {};
-  } catch (e) { /* 保存できない環境でも動かす */ }
+    if (raw) {
+      const got = JSON.parse(raw);
+      if (got && typeof got === "object") data = Object.assign(data, got);
+    }
+  } catch (e) { /* 壊れていたら初めからにする */ }
+  const obj = (x) => x && typeof x === "object" && !Array.isArray(x);
+  for (const k of ["code", "cleared", "best", "hints"]) if (!obj(data[k])) data[k] = {};
   return {
     data,
-    save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch (e) { /* 同上 */ } },
+    save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch (e) { /* 保存できない環境でも動かす */ } },
   };
 })();
 
@@ -425,6 +445,7 @@ const ui = {
   flow: $("flow"), flowNote: $("flow-note"),
 };
 const SVG = "http://www.w3.org/2000/svg";
+const calm = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 function svg(name, attrs, parent) {
   const e = document.createElementNS(SVG, name);
   for (const k in attrs) e.setAttribute(k, attrs[k]);
@@ -518,21 +539,32 @@ ui.code.addEventListener("keydown", (ev) => {
   tabOut = false;
   const ta = ui.code, v = ta.value, a = ta.selectionStart, b = ta.selectionEnd;
   if ((ev.ctrlKey || ev.metaKey) && ev.key === "Enter") { ev.preventDefault(); run(); return; }
-  if (ev.key === "Tab" && !ev.shiftKey && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
-    ev.preventDefault(); insertText("    "); onEdit(); return;
+  if (ev.key === "Tab" && !ev.ctrlKey && !ev.metaKey && !ev.altKey) {
+    ev.preventDefault();
+    if (a === b && !ev.shiftKey) { insertText("    "); onEdit(); return; }
+    // 選んだ行をまとめて字下げする（Shift + Tab で戻す）
+    const ls = v.lastIndexOf("\n", a - 1) + 1;
+    let le = v.indexOf("\n", b > a && v[b - 1] === "\n" ? b - 1 : b); if (le < 0) le = v.length;
+    const lines = v.slice(ls, le).split("\n");
+    const out = lines.map((l) => (ev.shiftKey ? l.replace(/^ {1,4}/, "") : l.trim() ? "    " + l : l)).join("\n");
+    ta.setSelectionRange(ls, le);
+    insertText(out);
+    if (a !== b) ta.setSelectionRange(ls, ls + out.length);
+    onEdit(); return;
   }
   if (ev.key === "Enter" && !ev.shiftKey) {
     const ls = v.lastIndexOf("\n", a - 1) + 1;
     const before = v.slice(ls, a);
     let indent = before.match(/^ */)[0];
     ev.preventDefault();
-    if (before.length && before.trim() === "") {
+    let lineEnd = v.indexOf("\n", a); if (lineEnd < 0) lineEnd = v.length;
+    if (before.length && v.slice(ls, lineEnd).trim() === "") {
       // 中身のない字下げ行で Enter を押したら、ブロックを抜けて1段戻る
       ta.setSelectionRange(ls, a);
       insertText(indent.slice(0, Math.max(0, indent.length - 4)));
       onEdit(); return;
     }
-    if (/:\s*(#.*)?$/.test(before)) indent += "    ";
+    if (!/^\s*#/.test(before) && /:\s*(#.*)?$/.test(before)) indent += "    ";
     else if (/^\s*(return|break|continue|pass)\b/.test(before)) indent = indent.slice(0, Math.max(0, indent.length - 4));
     insertText("\n" + indent); onEdit(); return;
   }
@@ -545,6 +577,17 @@ ui.code.addEventListener("keydown", (ev) => {
   }
 });
 
+/* else / elif を入れるとき、対応する if と同じ字下げを探す */
+function ifIndent(v, lineStart, cur) {
+  const lines = v.slice(0, lineStart).split("\n");
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const l = lines[i], n = l.match(/^ */)[0].length;
+    if (!l.trim()) continue;
+    if (n <= cur && /^\s*(if|elif)\b/.test(l)) return " ".repeat(n);
+    if (n < cur - 4) break;
+  }
+  return " ".repeat(Math.max(0, cur - 4));
+}
 function insertSnippet(text, opensBlock) {
   const ta = ui.code, v = ta.value, pos = ta.selectionStart;
   const ls = v.lastIndexOf("\n", pos - 1) + 1;
@@ -552,12 +595,14 @@ function insertSnippet(text, opensBlock) {
   const line = v.slice(ls, le);
   const indent = line.match(/^ */)[0];
   ta.focus();
+  const branch = /^(elif|else)\b/.test(text);
   if (line.trim() === "") {
+    const use = branch ? ifIndent(v, ls, indent.length) : indent;
     ta.setSelectionRange(ls, le);
-    insertText(indent + text + (opensBlock ? "\n" + indent + "    " : ""));
+    insertText(use + text + (opensBlock ? "\n" + use + "    " : ""));
   } else {
-    const inner = /:\s*(#.*)?$/.test(line) ? indent + "    " : indent;
-    const use = text === "else:" ? indent.slice(0, Math.max(0, indent.length - 4)) : inner;
+    const inner = !/^\s*#/.test(line) && /:\s*(#.*)?$/.test(line) ? indent + "    " : indent;
+    const use = branch ? ifIndent(v, ls, indent.length) : inner;
     ta.setSelectionRange(le, le);
     insertText("\n" + use + text + (opensBlock ? "\n" + use + "    " : ""));
   }
@@ -661,6 +706,7 @@ function buildMaze(st) {
   svg("line", { class: "flag-pole", x1: -8, y1: -15, x2: -8, y2: 16 }, flag);
   svg("path", { class: "flag", d: "M-8 -15 L13 -8 L-8 -1 Z" }, flag);
   const trail = svg("g", {}, root);
+  const pinG = svg("g", { class: "pin" }, root);
 
   // ドア: ゴールと、その手前のマスの境目に置く
   let door = null, ax = -1, ay = -1;
@@ -712,6 +758,13 @@ function buildMaze(st) {
     door.classList.toggle("open", doorOpen);
   };
   const api = {
+    pin(n) {
+      pinG.textContent = "";
+      if (n == null) return;
+      const px = sx + DIRS[st.dir || 0][0] * n, py = sy + DIRS[st.dir || 0][1] * n;
+      svg("rect", { x: px * CELL + 5, y: py * CELL + 5, width: CELL - 10, height: CELL - 10 }, pinG);
+      svg("text", { x: cx(px), y: py * CELL + CELL - 9, "text-anchor": "middle" }, pinG).textContent = "予想";
+    },
     reset(startOpen) {
       x = sx; y = sy; dir = st.dir || 0; ang = dir * 90; doorOpen = !!startOpen;
       trail.textContent = "";
@@ -744,12 +797,12 @@ function buildMaze(st) {
         bubble.classList.remove("show");
       } else if (a.t === "bump") {
         showDoor();
-        if (inner.animate) inner.animate([{ transform: "translateX(0)" }, { transform: "translateX(10px)" }, { transform: "translateX(0)" }], { duration: 260 });
+        if (inner.animate && !calm()) inner.animate([{ transform: "translateX(0)" }, { transform: "translateX(10px)" }, { transform: "translateX(0)" }], { duration: 260 });
         cross.setAttribute("transform", `translate(${cx(x) + DIRS[dir][0] * CELL * 0.5},${cy(y) + DIRS[dir][1] * CELL * 0.5})`);
         cross.classList.add("show");
         await sleep(300);
       } else if (a.t === "goal") {
-        if (inner.animate) inner.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)" }, { transform: "scale(1)" }], { duration: 420 });
+        if (inner.animate && !calm()) inner.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)" }, { transform: "scale(1)" }], { duration: 420 });
         await sleep(430);
       }
     },
@@ -864,6 +917,7 @@ function buildTrace(st) {
   const fnBox = h("div", "vars"); fnBox.hidden = true;
   const where = h("p", "where", "「実行」を押すと、変数の箱がここに出ます。");
   where.setAttribute("aria-live", "polite");
+  where.setAttribute("aria-atomic", "true");
   const scrub = h("div", "scrub"); scrub.hidden = true;
   const back = h("button", "btn small", "1行もどる"), fwd = h("button", "btn small", "1行すすむ");
   back.type = fwd.type = "button";
@@ -898,9 +952,13 @@ function buildTrace(st) {
   fwd.addEventListener("click", () => show(cur + 1));
   range.addEventListener("input", () => show(Number(range.value)));
   return {
-    load(res) { steps = res.steps; out = res.output; range.max = String(Math.max(0, steps.length - 1)); scrub.hidden = true; },
+    load(res) {
+      steps = res.steps; out = res.output;
+      if (!steps.length) { box.textContent = ""; fnBox.textContent = ""; fnBox.hidden = fnTitle.hidden = true; where.textContent = "エラーで実行できなかったので、箱はありません。"; }
+      range.max = String(Math.max(0, steps.length - 1)); scrub.hidden = true; where.setAttribute("aria-live", "off");
+    },
     show,
-    done() { scrub.hidden = steps.length < 2; },
+    done() { scrub.hidden = steps.length < 2; where.setAttribute("aria-live", "polite"); },
   };
 }
 
@@ -909,13 +967,14 @@ const DOOR_TEXT = { closed: "閉まっている", open: "開いている" };
 
 function setPlaying(on) {
   playing = on; skip = false;
-  ui.runLabel.textContent = on ? "結果へ進む" : "実行";
+  ui.runLabel.textContent = on ? "とばして結果へ" : "実行";
 }
 async function run() {
   if (!py) return;
   if (playing) { skip = true; return; }
   const token = ++runToken;
-  const code = ui.code.value;
+  // 貼り付けた Windows の改行と Tab をそろえてから実行する
+  const code = ui.code.value.replace(/\r\n?/g, "\n").replace(/\t/g, "    ");
   markLine(null);
   updateFlow();
   ui.outBox.hidden = true;
@@ -930,11 +989,11 @@ async function run() {
     }
     const keys = Object.keys(results);
     const shown = keys[Math.floor(Math.random() * keys.length)];
-    last = { results, shown };
+    last = { results, shown, code, flow: flowInfo };
     await showCase(shown, token);
   } else if (stage.kind === "trace") {
     const res = JSON.parse(py.run_trace(code));
-    last = { results: { only: res }, shown: "only" };
+    last = { results: { only: res }, shown: "only", code };
     setResult("idle", [h("p", "", "実行中")]);
     world.load(res);
     setPlaying(true);
@@ -953,7 +1012,7 @@ async function run() {
     finishRun();
   } else {
     const res = JSON.parse(py.run_draw(code));
-    last = { results: { only: res }, shown: "only" };
+    last = { results: { only: res }, shown: "only", code };
     setResult("idle", [h("p", "", "実行中")]);
     setPlaying(true);
     await replayDraw(res, token);
@@ -1006,9 +1065,14 @@ async function replayDraw(res, token) {
       if (!skip) await new Promise((r) => requestAnimationFrame(r));
     }
   }
+  if (token !== runToken) return;
   world.finish(res.end);
 }
 
+function revealResult() {
+  const r = ui.result.getBoundingClientRect();
+  if (r.top < 0 || r.bottom > window.innerHeight) ui.result.scrollIntoView({ block: "nearest", behavior: calm() ? "auto" : "smooth" });
+}
 function setResult(cls, children) {
   ui.result.className = "result " + cls;
   ui.result.textContent = "";
@@ -1042,6 +1106,7 @@ function caseLine(res) {
 }
 
 function finishRun() {
+  requestAnimationFrame(revealResult);
   const { results, shown } = last;
   const res = results[shown];
   if (res.output) { ui.out.textContent = res.output; ui.outBox.hidden = false; }
@@ -1082,16 +1147,26 @@ function finishRun() {
   const keys = Object.keys(results);
   const allPass = keys.every((k) => results[k].status === "goal");
   const kids = [];
+  if (stage.predict && guess != null) {
+    const moved = res.actions.filter((x) => x.t === "move").length;
+    kids.push(h("p", "guess", moved === guess
+      ? `予想 ${guess} マス → 実際 ${moved} マス。予想どおりです。`
+      : `予想 ${guess} マス → 実際 ${moved} マス。予想とちがいました。どの行で何マス進んだか、フローチャートと見くらべよう。`));
+    guess = null;
+    $("predict").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", "false"));
+  }
   let cls = "bad";
   if (allPass) {
     cls = "ok";
     kids.push(h("p", "head", stage.door ? "クリア。開いていても閉まっていても、ゴールできました" : "ゴール。クリアです"));
-    const tip = stage.tip ? stage.tip(flowInfo) : "";
+    const tip = stage.tip ? stage.tip(last.flow) : "";
     if (tip) kids.push(h("p", "", tip));
     const goal = GOAL_LINES[stage.id];
     if (goal != null) {
-      const n = countLines(ui.code.value), prev = store.data.best[stage.id];
+      const n = countLines(last.code), prev = store.data.best[stage.id];
       if (prev == null || n < prev) { store.data.best[stage.id] = n; store.save(); }
+      const flat = results[shown].actions.filter((x) => x.t === "move" || x.t === "turn" || x.t === "open").length;
+      if (flat > n) kids.push(h("p", "", `くり返しを使わずに1つずつ書くと ${flat} 行になります。いまは ${n} 行なので、${flat - n} 行短く書けています。`));
       kids.push(h("p", "star", n <= goal
         ? `★ 最短チャレンジ達成。${n} 行で書けました（目標 ${goal} 行以下）。`
         : `最短チャレンジ：いまは ${n} 行です。${goal} 行以下にできたら ★ です。for を使えるところはありませんか。`));
@@ -1113,7 +1188,7 @@ function finishRun() {
       if (r.actions.length) {
         const b = h("button", "btn small", k === shown ? "もう一度見る" : "この場合を見る");
         b.type = "button";
-        b.addEventListener("click", () => showCase(k, ++runToken));
+        b.addEventListener("click", () => { ui.result.setAttribute("tabindex", "-1"); ui.result.focus({ preventScroll: true }); showCase(k, ++runToken); });
         txt.appendChild(b);
       }
       ul.appendChild(li);
@@ -1130,7 +1205,7 @@ function nextButton() {
   const nx = STAGES[i + 1];
   const b = h("button", "btn next", nx.lesson !== stage.lesson ? `第${nx.lesson}時へ` : "次のステップへ");
   b.type = "button";
-  b.addEventListener("click", () => openStage(STAGES[i + 1].id, true));
+  b.addEventListener("click", () => { openStage(STAGES[i + 1].id, true); focusHead(); });
   wrap.appendChild(b);
   return wrap;
 }
@@ -1208,6 +1283,7 @@ function fcLoop(n) {
       let cy = y + H + G;
       if (body.h) { body.draw(g, x, cy); cy += body.h; fcLine(g, [[x, cy], [x, cy + G]]); cy += G; }
       svg("polygon", { class: "fc-shape k-loop", points: `${a},${cy} ${b},${cy} ${b},${cy + H - c} ${b - c},${cy + H} ${a + c},${cy + H} ${a},${cy + H - c}` }, g);
+      fcText(g, x, cy + H / 2 + 1, "くり返しここまで", w, { k: "loop" });
     },
   };
 }
@@ -1286,7 +1362,7 @@ function renderSteps() {
       if (s.hue) b.dataset.hue = s.hue;
       if (s === stage) b.setAttribute("aria-current", "page");
       b.setAttribute("aria-label", `第${n}時 ステップ${s.n} ${s.tab}${star ? "（最短チャレンジ達成）" : done ? "（クリア済み）" : ""}`);
-      b.addEventListener("click", () => { openStage(s.id, true); if (!tocDocked()) setToc(false, true); });
+      b.addEventListener("click", () => { openStage(s.id, true); if (!tocDocked()) setToc(false, true); else { const c = ui.lessons.querySelector(".step.current"); if (c) c.focus(); } });
       li.appendChild(b); ol.appendChild(li);
     }
     sec.appendChild(ol);
@@ -1304,7 +1380,7 @@ function renderSteps() {
     if (s.hue) b.dataset.hue = s.hue;
     if (s === stage) b.setAttribute("aria-current", "step");
     b.setAttribute("aria-label", `ステップ${s.n} ${s.tab}${star ? "（最短チャレンジ達成）" : done ? "（クリア済み）" : ""}`);
-    b.addEventListener("click", () => openStage(s.id, true));
+    b.addEventListener("click", () => { openStage(s.id, true); const c = ui.steps.querySelector(".step.current"); if (c) c.focus(); });
     ui.steps.appendChild(b);
   }
 }
@@ -1334,12 +1410,12 @@ function openShared() {
   const text = sharedCode();
   try { history.replaceState(null, "", "#step-" + stage.id); } catch (e) { /* そのまま */ }
   if (text == null) return;
-  const before = ui.code.value;
+  // 共有されたプログラムは、生徒が書きかえるまで保存しない（自分のプログラムは残る）
   ui.code.value = text;
-  onEdit(); refreshGutter();
+  refreshGutter(); markLine(null); updateFlow();
   const back = h("button", "btn small", "自分のプログラムに戻す"); back.type = "button";
-  back.addEventListener("click", () => { setCode(before); setResult("idle", [h("p", "", "自分のプログラムに戻しました。")]); });
-  setResult("idle", [h("p", "", "共有されたプログラムを開きました。「実行」で動かしてみよう。"), h("div", "actions", null)]);
+  back.addEventListener("click", () => { const own = store.data.code[stage.id]; setCode(own != null ? own : stage.code); setResult("idle", [h("p", "", "自分のプログラムに戻しました。")]); });
+  setResult("idle", [h("p", "", "共有されたプログラムを開きました。「実行」で動かしてみよう。書きかえると、あなたのプログラムとして保存されます。"), h("div", "actions", null)]);
   ui.result.querySelector(".actions").appendChild(back);
 }
 async function copyLink() {
@@ -1353,6 +1429,7 @@ async function copyLink() {
 }
 function renderHints() {
   const list = HINTS[stage.id] || [];
+  if (LIFE[stage.id]) { const p = h("p", "life"); p.appendChild(h("b", "", "くらしの中では")); p.appendChild(document.createTextNode(LIFE[stage.id])); ui.body.appendChild(p); }
   const goal = GOAL_LINES[stage.id];
   if (goal != null) {
     const best = store.data.best[stage.id];
@@ -1368,7 +1445,8 @@ function renderHints() {
     b.addEventListener("click", () => {
       store.data.hints[stage.id] = shown + 1; store.save();
       const old = ui.body.querySelector(".hints"); const ch = ui.body.querySelector(".challenge");
-      if (old) old.remove(); if (ch) ch.remove();
+      const lf = ui.body.querySelector(".life");
+      if (old) old.remove(); if (ch) ch.remove(); if (lf) lf.remove();
       renderHints();
       const ps = ui.body.querySelectorAll(".hint"); if (ps.length) { ps[ps.length - 1].setAttribute("tabindex", "-1"); ps[ps.length - 1].focus(); }
     });
@@ -1376,8 +1454,35 @@ function renderHints() {
   }
   ui.body.appendChild(box);
 }
+/* 予想してから実行（ステップ1・2） */
+let guess = null;
+function renderPredict() {
+  const box = $("predict");
+  box.textContent = ""; box.hidden = !stage.predict; guess = null;
+  if (!stage.predict) return;
+  const row = stage.map.find((r) => r.includes("S"));
+  const max = row.slice(row.indexOf("S") + 1).replace(/#.*$/, "").length;
+  box.appendChild(h("p", "", "実行する前に予想しよう。ロボットは、スタートから何マス進む？"));
+  const btns = h("div", "predict-btns");
+  for (let n = 0; n <= max; n++) {
+    const b = h("button", "btn small", `${n} マス`); b.type = "button";
+    b.setAttribute("aria-pressed", "false");
+    b.addEventListener("click", () => {
+      guess = n;
+      btns.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      world.pin(n);
+    });
+    btns.appendChild(b);
+  }
+  box.appendChild(btns);
+}
+function focusHead() {
+  const hd = $("st-head"); hd.setAttribute("tabindex", "-1"); hd.focus({ preventScroll: true });
+  hd.scrollIntoView({ block: "start", behavior: calm() ? "auto" : "smooth" });
+}
 function openStage(id, setHash) {
   stage = STAGES.find((s) => s.id === id) || STAGES[0];
+  if (stage.id !== id && /^#step-/.test(location.hash)) setHash = true;
   runToken++;
   if (py) setPlaying(false);
   last = null; flowInfo = null;
@@ -1414,6 +1519,7 @@ function openStage(id, setHash) {
   }
 
   world = stage.kind === "maze" ? buildMaze(stage) : stage.kind === "trace" ? buildTrace(stage) : buildPad();
+  renderPredict();
   ui.world.classList.toggle("fixed", stage.kind !== "trace");
   if (typeof worldZoom !== "undefined") worldZoom.reset();
   const saved = store.data.code[stage.id];
@@ -1453,6 +1559,23 @@ function setToc(open, focusBack) {
 }
 tocBtn.addEventListener("click", () => setToc(toc.hidden, false));
 $("toc-close").addEventListener("click", () => setToc(false, true));
+function resetAll() {
+  try { localStorage.removeItem(STORE_KEY); } catch (e) { /* 保存できない環境 */ }
+  Object.assign(store.data, { code: {}, cleared: {}, last: 1, best: {}, hints: {}, big: false, toc: false });
+  setBig(false);
+  openStage(STAGES[0].id, true);
+}
+$("reset-all").addEventListener("click", () => {
+  const b = $("reset-all");
+  if (b.dataset.armed !== "1") {
+    b.dataset.armed = "1"; b.textContent = "本当に消す（もう一度押す）";
+    setTimeout(() => { b.dataset.armed = ""; b.textContent = "この端末の記録をすべて消す"; }, 4000);
+    return;
+  }
+  b.dataset.armed = ""; b.textContent = "この端末の記録をすべて消す";
+  resetAll();
+  setResult("idle", [h("p", "", "この端末の記録（プログラム・クリア・★・ヒント）をすべて消しました。")]);
+});
 document.addEventListener("keydown", (ev) => {
   if (ev.key === "Escape" && !toc.hidden && !tocDocked() && ev.target !== ui.code) setToc(false, true);
 });
@@ -1484,6 +1607,11 @@ const flowZoom = addZoom($("flow-frame"), ui.flow, "フローチャート", () =
 window.addEventListener("resize", () => { flowZoom.refit(); worldZoom.refit(); });
 
 (function init() {
+  if (/[?&]reset=1\b/.test(location.search)) {
+    try { localStorage.removeItem(STORE_KEY); } catch (e) { /* 同上 */ }
+    Object.assign(store.data, { code: {}, cleared: {}, last: 1, best: {}, hints: {}, big: false, toc: false });
+    try { history.replaceState(null, "", location.pathname + location.hash); } catch (e) { /* そのまま */ }
+  }
   if (store.data.big) setBig(true);
   if (store.data.toc && tocDocked()) { toc.hidden = false; tocBtn.setAttribute("aria-expanded", "true"); document.documentElement.classList.add("toc-open"); }
   openStage(parseHash() ?? store.data.last ?? 1, false);
