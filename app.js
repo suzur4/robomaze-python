@@ -37,7 +37,7 @@ const TOOL = {
 const STAGES = [
   {
     id: 1, tab: "順番", kind: "maze", predict: true,
-    kicker: "順次構造　教科書 p.164", hue: "seq",
+    kicker: "教科書 p.164", tags: ["seq"],
     title: "命令を上から順に並べる",
     body: `
       <p><code>forward()</code> は「1マス前に進む」という命令です。コンピュータは、書かれた命令を上から1行ずつ実行します。</p>
@@ -48,7 +48,7 @@ const STAGES = [
   },
   {
     id: 2, tab: "くり返し", kind: "maze", predict: true,
-    kicker: "反復構造　教科書 p.164", hue: "loop",
+    kicker: "教科書 p.164", tags: ["loop"],
     title: "同じ命令は、くり返しにまとめる",
     body: `
       <p>通路が8マスになりました。<code>forward()</code> を8行書いても進めますが、<code>for</code> を使うと2行で書けます。</p>
@@ -62,7 +62,7 @@ const STAGES = [
   },
   {
     id: 3, tab: "場合分け", kind: "maze", door: true,
-    kicker: "選択構造　教科書 pp.164〜165", hue: "sel",
+    kicker: "教科書 pp.164〜165", tags: ["sel"],
     title: "場合によって、することを変える",
     body: `
       <p>ゴールにドアが付きました。ドアは開いていることも閉まっていることもあり、前まで行かないとわかりません。開いているドアを開けようとすると、ロボットは空振りして止まります。</p>
@@ -76,7 +76,7 @@ const STAGES = [
   },
   {
     id: 4, tab: "自分で解く", kind: "maze", door: true,
-    kicker: "3つの構造を組み合わせる　教科書 p.165 確認問題",
+    kicker: "3つを組み合わせる　教科書 p.165 確認問題", tags: ["seq", "loop", "sel"],
     title: "道順を設計して、自分で書く",
     body: `
       <p>ここからは手本がありません。先に道順を紙に書き（設計）、プログラムにして（コーディング）、実行して確かめます（テスト）。教科書 p.166 の3つの手順です。</p>
@@ -192,8 +192,8 @@ STAGES.push(
 
   /* ---------------- 第3時 分岐と反復 */
   {
-    id: "3-1", lesson: 3, tab: "約数", kind: "trace", hue: "sel",
-    kicker: "選択構造のプログラム　教科書 p.169 例題2",
+    id: "3-1", lesson: 3, tab: "約数", kind: "trace", tags: ["sel"],
+    kicker: "教科書 p.169 例題2",
     title: "約数かどうかを判定する",
     body: `
       <p><code>%</code> は、わり算の余りを求める記号です（教科書の Mod）。<code>131 % 7</code> は、131 を 7 で割った余りです。</p>
@@ -209,8 +209,8 @@ STAGES.push(
     },
   },
   {
-    id: "3-2", lesson: 3, tab: "九九", kind: "trace", hue: "loop",
-    kicker: "反復構造のプログラム　教科書 p.170 例題3",
+    id: "3-2", lesson: 3, tab: "九九", kind: "trace", tags: ["loop"],
+    kicker: "教科書 p.170 例題3",
     title: "九九の7の段を表示する",
     body: `
       <p><code>range(1, 10)</code> は 1 から 9 までです。最後の 10 は入りません。i は、くり返すたびに 1 ずつ増えます。</p>
@@ -223,7 +223,7 @@ STAGES.push(
     },
   },
   {
-    id: "3-3", lesson: 3, tab: "合計", kind: "trace", hue: "loop",
+    id: "3-3", lesson: 3, tab: "合計", kind: "trace", tags: ["loop"],
     kicker: "くり返しで足していく　教科書 p.180 章末問題1",
     title: "1から10までの和を求める",
     body: `
@@ -237,7 +237,7 @@ STAGES.push(
     },
   },
   {
-    id: "3-4", lesson: 3, tab: "チャレンジ", kind: "trace", hue: "sel",
+    id: "3-4", lesson: 3, tab: "チャレンジ", kind: "trace", tags: ["sel"],
     kicker: "チャレンジ　教科書 p.181 章末問題7",
     title: "3の倍数と5の倍数",
     body: `
@@ -337,7 +337,7 @@ STAGES.push(
 
   /* ---------------- 第6時 整列 */
   {
-    id: "6-1", lesson: 6, tab: "バブルソート", kind: "trace", pointers: ["i"], pair: true, hue: "loop",
+    id: "6-1", lesson: 6, tab: "バブルソート", kind: "trace", pointers: ["i"], pair: true,
     kicker: "整列のアルゴリズム　教科書 pp.176〜177 例題3",
     title: "となりどうしを比べて入れ替える",
     body: `
@@ -418,6 +418,20 @@ const countLines = (code) => code.split("\n").reduce((n, l) => {
   const inline = /^(for|if|elif|else|while|def)\b.*:\s*\S/.test(t) ? 1 : 0;
   return n + parts + inline;
 }, 0);
+
+/* 色は「順次・反復・選択のどれか」を表すときだけ使う。フローチャートの箱、命令ボタン、説明欄の札で同じ色。 */
+const KIND = {
+  seq: { name: "順次", cls: "k-proc" },
+  loop: { name: "反復", cls: "k-loop" },
+  sel: { name: "選択", cls: "k-if" },
+};
+/* 命令ボタンの色 = その命令がフローチャートで描かれる箱の色（print は表示の記号なので白） */
+function chipKind(key) {
+  if (key === "for" || key === "forr") return "k-loop";
+  if (/^(if|else|elif)/.test(key)) return "k-if";
+  if (key === "print") return "k-io";
+  return "k-proc";
+}
 
 const LESSONS = [[1, "アルゴリズム"], [2, "変数"], [3, "分岐と反復"], [4, "リストと関数"], [5, "探索"], [6, "整列"]];
 {
@@ -744,10 +758,36 @@ function addZoom(panel, inner, label, fit, allLabel, floor = 0) {
   all.addEventListener("click", () => { auto = true; set(fit ? fit() : 1); });
   set(1);
   // 図が描き直されたとき、自分で倍率を変えていなければ幅に合わせ直す
-  const refit = () => { if (auto) set(Math.max(floor, fit ? fit() : 1)); };
+  const refit = () => { if (auto) set(Math.max(typeof floor === "function" ? floor() : floor, fit ? fit() : 1)); };
   return { refit, reset: () => { auto = true; refit(); } };
 }
 
+/* 読み上げ用に、迷路の道順を文にする（例：「右へ4マス、下へ3マスでゴール」） */
+function mazeDesc(rows, st, sx, sy, gx, gy) {
+  const W = rows[0].length, H = rows.length, prev = new Map(), key = (x, y) => y * W + x;
+  const q = [[sx, sy]]; prev.set(key(sx, sy), null);
+  while (q.length) {
+    const [x, y] = q.shift();
+    if (x === gx && y === gy) break;
+    for (const [dx, dy] of DIRS) {
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H || rows[ny][nx] === "#" || prev.has(key(nx, ny))) continue;
+      prev.set(key(nx, ny), [x, y]); q.push([nx, ny]);
+    }
+  }
+  const NAME = ["右", "下", "左", "上"], path = [];
+  for (let c = [gx, gy]; prev.get(key(c[0], c[1])); c = prev.get(key(c[0], c[1]))) path.unshift(c);
+  const runs = []; let px = sx, py0 = sy;
+  for (const [x, y] of path) {
+    const d = DIRS.findIndex(([dx, dy]) => dx === x - px && dy === y - py0);
+    if (runs.length && runs[runs.length - 1][0] === d) runs[runs.length - 1][1]++; else runs.push([d, 1]);
+    px = x; py0 = y;
+  }
+  let t = `迷路。ロボットはスタートで${NAME[st.dir || 0]}を向いている。道は、` + runs.map(([d, n]) => `${NAME[d]}へ${n}マス`).join("、") + "でゴール。";
+  if (st.door) t += "ゴールの手前にドアがある。";
+  if (st.disabled && st.disabled.length) t += st.disabled.map((n) => n + "()").join("、") + " は故障中。";
+  return t;
+}
 function buildMaze(st) {
   const rows = st.map, H = rows.length, W = rows[0].length;
   const root = svg("svg", { class: "maze", viewBox: `${CELL * 0.6} ${CELL * 0.6} ${(W - 1.2) * CELL} ${(H - 1.2) * CELL}`, role: "img", "aria-label": "迷路" });
@@ -762,6 +802,7 @@ function buildMaze(st) {
     if (ch === "G") { gx = x; gy = y; }
   }));
   const cx = (x) => x * CELL + CELL / 2, cy = (y) => y * CELL + CELL / 2;
+  root.setAttribute("aria-label", mazeDesc(rows, st, sx, sy, gx, gy));
   svg("text", { class: "cap", x: cx(sx), y: sy * CELL - 5 }, root).textContent = "スタート";
   // ゴールの旗
   const flag = svg("g", { transform: `translate(${cx(gx)},${cy(gy)})` }, root);
@@ -1065,7 +1106,8 @@ async function run() {
     world.load(res);
     setPlaying(true);
     const n = res.steps.length, ms = Number(ui.speed.value);
-    const total = ms >= 600 ? 20000 : ms >= 300 ? 9000 : 3000;
+    // 終わらないくり返しなどで途中までしか記録していないときは、同じ行の再生を長く見せない
+    const total = res.cut && res.status === "error" ? 1200 : ms >= 600 ? 20000 : ms >= 300 ? 9000 : 3000;
     const delay = Math.max(16, Math.min(ms, total / Math.max(n, 1)));
     const stride = Math.max(1, Math.ceil((n * 16) / total));
     for (let k = 0; k < n; k += stride) {
@@ -1471,7 +1513,6 @@ function renderSteps() {
       b.type = "button";
       b.appendChild(h("span", "num", star ? "★" : done ? "✓" : String(s.n)));
       b.appendChild(h("span", "", s.tab));
-      if (s.hue) b.dataset.hue = s.hue;
       if (s === stage) b.setAttribute("aria-current", "page");
       b.setAttribute("aria-label", `第${n}時 ステップ${s.n} ${s.tab}${star ? "（最短チャレンジ達成）" : done ? "（クリア済み）" : ""}`);
       b.addEventListener("click", () => { openStage(s.id, true); if (!tocDocked()) setToc(false, true); else { const c = ui.lessons.querySelector(".step.current"); if (c) c.focus(); } });
@@ -1492,7 +1533,6 @@ function renderSteps() {
     b.type = "button";
     b.appendChild(h("span", "num", star ? "★" : done ? "✓" : String(s.n)));
     b.appendChild(h("span", "", s.tab));
-    if (s.hue) b.dataset.hue = s.hue;
     if (s === stage) b.setAttribute("aria-current", "step");
     b.setAttribute("aria-label", `ステップ${s.n} ${s.tab}${star ? "（最短チャレンジ達成）" : done ? "（クリア済み）" : ""}`);
     b.addEventListener("click", () => { openStage(s.id, true); const c = ui.steps.querySelector(".step.current"); if (c) c.focus(); });
@@ -1606,7 +1646,9 @@ function openStage(id, setHash) {
   renderSteps();
   ui.num.textContent = stage.n;
   ui.stageTitle.textContent = stage.kind === "trace" ? "変数の箱" : "ロボット";
-  ui.kicker.textContent = stage.kicker;
+  ui.kicker.textContent = "";
+  for (const t of stage.tags || []) ui.kicker.appendChild(h("span", "tag " + KIND[t].cls, KIND[t].name));
+  ui.kicker.appendChild(document.createTextNode(stage.kicker));
   ui.title.textContent = stage.title;
   ui.body.innerHTML = stage.body; // STAGES に書いた自前の文だけを入れる
   renderHints();
@@ -1615,8 +1657,9 @@ function openStage(id, setHash) {
   if (stage.tools.length) ui.tools.appendChild(h("span", "label", "命令を入れる"));
   for (const key of stage.tools) {
     const [ja, code, block] = TOOL[key];
-    const b = h("button", "chip" + (key === "for" ? " k-loop" : /^if|^else/.test(key) ? " k-sel" : "")); b.type = "button";
+    const b = h("button", "chip " + chipKind(key)); b.type = "button";
     b.appendChild(h("b", "", ja)); b.appendChild(h("span", "", code));
+    b.title = code; // 高さの低い画面では日本語の名前だけを出すので、コードはここで見られる
     b.addEventListener("click", () => insertSnippet(code, block));
     ui.tools.appendChild(b);
   }
@@ -1708,6 +1751,7 @@ function setBig(on) {
   big.setAttribute("aria-pressed", String(on));
   store.data.big = on; store.save();
   refreshGutter();
+  if (typeof flowZoom !== "undefined") { flowZoom.refit(); worldZoom.refit(); }
 }
 big.addEventListener("click", () => setBig(big.getAttribute("aria-pressed") !== "true"));
 
@@ -1722,9 +1766,11 @@ const flowZoom = addZoom($("flow-frame"), ui.flow, "フローチャート", () =
   const svgEl = ui.flow.querySelector("svg");
   if (!svgEl) return 1;
   const room = $("flow-frame").clientWidth - 8;
-  const cap = document.documentElement.classList.contains("teach") ? 1.4 : 1;
+  // 文字を大きくしているときは、図の文字も読めるように大きめに表示する（収まらない分は横にスクロール）
+  const cl = document.documentElement.classList;
+  const cap = cl.contains("teach") ? 1.4 : cl.contains("big") ? 1.25 : 1;
   return Math.min(cap, room / Number(svgEl.getAttribute("width")));
-}, "全体を表示", 0.6);
+}, "全体を表示", () => (document.documentElement.classList.contains("big") ? 0.8 : 0.6));
 window.addEventListener("resize", () => { flowZoom.refit(); worldZoom.refit(); refreshGutter(); });
 
 /* 説明をたたむ */

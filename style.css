@@ -30,9 +30,6 @@ code { background: var(--color-paper-3); padding-inline: var(--space-2xs); white
   background: var(--color-paper-2); color: var(--color-ink);
   font-family: var(--font-display); font-weight: 700; font-size: var(--text-sm); font-variant-numeric: tabular-nums;
 }
-.step[data-hue="seq"] .num { background: var(--color-accent); color: var(--color-accent-ink); }
-.step[data-hue="loop"] .num { background: var(--color-accent-3); color: var(--color-ink); }
-.step[data-hue="sel"] .num { background: var(--color-accent-2-deep); color: var(--color-accent-ink); }
 .step:hover { background: var(--color-paper-3); }
 .step:active { background: var(--color-paper-2); }
 .step.current { background: var(--color-ink); color: var(--color-paper-3); font-weight: 700; }
@@ -52,6 +49,10 @@ code { background: var(--color-paper-3); padding-inline: var(--space-2xs); white
   border: var(--rule-box) solid var(--color-ink); font-size: var(--text-3xl); line-height: 1; font-variant-numeric: tabular-nums;
 }
 .ref { font-size: var(--text-sm); font-weight: 500; color: var(--color-muted); }
+.ref .tag { display: inline-block; margin-right: var(--space-xs); padding: 0 var(--space-xs); font-size: var(--text-sm); font-weight: 700; line-height: 1.6; }
+.tag.k-proc { background: var(--color-accent); color: var(--color-accent-ink); }
+.tag.k-loop { background: var(--color-accent-3); color: var(--color-ink); }
+.tag.k-if { background: var(--color-accent-2-deep); color: var(--color-accent-ink); }
 .body { columns: 2 22em; column-gap: var(--space-xl); }
 .body > * { break-inside: avoid; margin: 0 0 var(--space-xs); max-width: none; }
 .body ul { padding-left: var(--space-lg); }
@@ -76,8 +77,9 @@ code { background: var(--color-paper-3); padding-inline: var(--space-2xs); white
 }
 .chip b { font-weight: 500; }
 .chip span { font-size: var(--text-sm); }
+.chip.k-proc { background: var(--color-accent); color: var(--color-accent-ink); }
 .chip.k-loop { background: var(--color-accent-3); }
-.chip.k-sel { background: var(--color-accent-2-deep); color: var(--color-accent-ink); }
+.chip.k-if { background: var(--color-accent-2-deep); color: var(--color-accent-ink); }
 .chip:hover { background: var(--color-ink); color: var(--color-paper-3); }
 .chip:active { transform: translateY(1px); }
 
@@ -320,6 +322,8 @@ code { background: var(--color-paper-3); padding-inline: var(--space-2xs); white
   .world { max-height: max(220px, calc(100svh - 230px)); min-height: 200px; }
   .tools, .samples { gap: var(--space-2xs); }
   .chip { min-height: 28px; padding-block: 0; }
+  /* 命令ボタンは日本語の名前だけにして、編集欄が画面に入るようにする（押すとコードが入る） */
+  .tools .chip span { display: none; }
 }
 @media (max-height: 820px) and (min-width: 761px) and (max-width: 1180px) {
   .brand h1 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
