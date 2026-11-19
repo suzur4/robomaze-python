@@ -1720,11 +1720,11 @@ function setToc(open, focusBack) {
 }
 tocBtn.addEventListener("click", () => setToc(toc.hidden, false));
 $("toc-close").addEventListener("click", () => setToc(false, true));
-const FRESH = () => ({ code: {}, cleared: {}, last: 1, best: {}, hints: {}, big: false, toc: false, notes: {}, fold: false, teach: false });
+const FRESH = () => ({ code: {}, cleared: {}, last: 1, best: {}, hints: {}, big: false, toc: false, notes: {}, fold: false, teach: false, theme: "default" });
 function resetAll() {
   try { localStorage.removeItem(STORE_KEY); } catch (e) { /* 保存できない環境 */ }
   Object.assign(store.data, FRESH());
-  setBig(false); setFold(false); setTeach(false);
+  setBig(false); setFold(false); setTeach(false); setTheme("default");
   openStage(STAGES[0].id, true);
 }
 $("reset-all").addEventListener("click", () => {
@@ -1744,6 +1744,18 @@ document.addEventListener("keydown", (ev) => {
 document.addEventListener("pointerdown", (ev) => {
   if (!toc.hidden && !tocDocked() && !toc.contains(ev.target) && !tocBtn.contains(ev.target)) setToc(false, false);
 });
+
+/* ------------------------------------------------------------------ 画面の色 */
+const THEMES = ["default", "white", "dark", "contrast"];
+function setTheme(t) {
+  if (!THEMES.includes(t)) t = "default";
+  if (t === "default") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
+  $("theme").value = t;
+  store.data.theme = t; store.save();
+  if (typeof flowZoom !== "undefined") { flowZoom.refit(); worldZoom.refit(); }
+  refreshGutter();
+}
+$("theme").addEventListener("change", () => setTheme($("theme").value));
 
 const big = $("big");
 function setBig(on) {
@@ -1869,6 +1881,9 @@ $("summary").addEventListener("close", () => {
 });
 
 (function init() {
+  // ?reset=1 などで URL を書きかえる前に、ほかの指定も読んでおく
+  const qtheme = location.search.match(/[?&]theme=(white|dark|contrast|default)\b/);
+  const qteach = /[?&]teach\b/.test(location.search);
   if (/[?&]reset=1\b/.test(location.search)) {
     try { localStorage.removeItem(STORE_KEY); } catch (e) { /* 同上 */ }
     Object.assign(store.data, FRESH());
@@ -1876,7 +1891,8 @@ $("summary").addEventListener("close", () => {
   }
   if (store.data.big) setBig(true);
   if (store.data.fold) setFold(true);
-  if (/[?&]teach\b/.test(location.search)) {
+  setTheme(qtheme ? qtheme[1] : store.data.theme || "default");
+  if (qteach) {
     store.data.teach = true;
     try { history.replaceState(null, "", location.pathname + location.hash); } catch (e) { /* そのまま */ }
   }

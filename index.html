@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ロボ迷路 Python</title>
 <meta name="description" content="ロボットを動かしながら、順次・くり返し・場合分けを学ぶ情報Ⅰの教材。ブラウザだけで Python が動きます。">
+<script>
+  // 前に選んだ「画面の色」を、画面を描く前に当てる。URL に ?theme=white なども使える
+  try {
+    var m = location.search.match(/[?&]theme=(white|dark|contrast|default)\b/);
+    var t = m ? m[1] : (JSON.parse(localStorage.getItem("robomaze.v1") || "{}").theme || "default");
+    if (t !== "default") document.documentElement.dataset.theme = t;
+  } catch (e) { /* 保存できない環境では標準の色 */ }
+</script>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="style.css">
@@ -26,8 +34,18 @@
     <span>目次</span><span class="toc-now" id="toc-now"></span>
   </button>
   <nav class="steps" id="steps" aria-label="ステップ"></nav>
-  <p class="teach-badge" id="teach-badge" hidden>授業モード <button type="button" class="btn small" id="teach-off">終わる</button></p>
-  <button type="button" class="btn small" id="big" aria-pressed="false">文字を大きく</button>
+  <div class="top-tools">
+    <p class="teach-badge" id="teach-badge" hidden>授業モード <button type="button" class="btn small" id="teach-off">終わる</button></p>
+    <label class="theme-pick" for="theme"><span class="theme-label">画面の色</span>
+      <select id="theme">
+        <option value="default">パテ（標準）</option>
+        <option value="white">白</option>
+        <option value="dark">黒</option>
+        <option value="contrast">くっきり</option>
+      </select>
+    </label>
+    <button type="button" class="btn small" id="big" aria-pressed="false">文字を大きく</button>
+  </div>
 </header>
 
 <aside class="toc" id="toc" aria-labelledby="toc-title" hidden>

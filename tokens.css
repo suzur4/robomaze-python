@@ -13,9 +13,40 @@
   --color-rule: oklch(58% 0.022 72);
   --color-accent: oklch(46% 0.2 264); --color-accent-2: oklch(58% 0.205 33); --color-accent-2-deep: oklch(50% 0.19 31); --color-accent-3: oklch(85% 0.165 92);
   --color-accent-ink: oklch(96% 0.012 82); --color-focus: oklch(46% 0.2 264);
+  --color-on-accent-3: oklch(18% 0.008 60); --color-surface-hi: oklch(96% 0.012 82);
+  --color-mark-on-ink: oklch(85% 0.165 92);
+  --color-canvas: oklch(97% 0.01 82); --color-canvas-ink: oklch(18% 0.008 60);
   --font-display: "Jost", "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", sans-serif; --font-body: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Meiryo", sans-serif;
   --font-outlier: "M PLUS 1 Code", ui-monospace, "Consolas", monospace;
   --radius-card: 0; --radius-pill: 0; --rule-hair: 1px; --rule-bar: 2px; --rule-box: 3px;
   --shadow-card: none;
   --tracking-display: -0.005em; --display-weight: 700;
+}
+
+/* 画面の色（ヘッダーの「画面の色」で選ぶ）。どの配色でも 青＝順次・黄＝反復・赤＝選択 は同じ意味。 */
+:root[data-theme="white"] {
+  --color-paper: oklch(99.5% 0.004 250); --color-paper-2: oklch(93.5% 0.004 250); --color-paper-3: oklch(98% 0.002 250);
+  --color-ink: oklch(17% 0.006 260); --color-ink-2: oklch(27% 0.006 260); --color-muted: oklch(40% 0.01 260);
+  --color-rule: oklch(62% 0.01 260);
+  --color-accent-ink: oklch(99.5% 0.004 250); --color-surface-hi: oklch(99.5% 0.004 250);
+  --color-canvas: oklch(99.5% 0.004 250);
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-paper: oklch(22% 0.012 260); --color-paper-2: oklch(27% 0.014 260); --color-paper-3: oklch(30.5% 0.014 260);
+  --color-ink: oklch(94% 0.008 80); --color-ink-2: oklch(86% 0.01 80); --color-muted: oklch(78% 0.012 80);
+  --color-rule: oklch(58% 0.012 260);
+  --color-accent: oklch(50% 0.2 264); --color-accent-2-deep: oklch(52% 0.19 31);
+  --color-accent-ink: oklch(98% 0.008 82); --color-focus: oklch(76% 0.13 250);
+  --color-surface-hi: oklch(38% 0.05 260); --color-mark-on-ink: oklch(48% 0.19 31);
+}
+:root[data-theme="contrast"] {
+  --color-paper: oklch(99.5% 0.004 250); --color-paper-2: oklch(91% 0.006 250); --color-paper-3: oklch(99.5% 0.004 250);
+  --color-ink: oklch(13% 0.006 260); --color-ink-2: oklch(19% 0.006 260); --color-muted: oklch(27% 0.006 260);
+  --color-rule: oklch(32% 0.006 260);
+  --color-accent: oklch(40% 0.22 264); --color-accent-2-deep: oklch(45% 0.2 29); --color-accent-3: oklch(87% 0.17 95);
+  --color-accent-ink: oklch(99.5% 0.004 250); --color-focus: oklch(40% 0.22 264);
+  --color-on-accent-3: oklch(13% 0.006 260); --color-surface-hi: oklch(99.5% 0.004 250);
+  --color-canvas: oklch(99.5% 0.004 250); --color-canvas-ink: oklch(13% 0.006 260);
+  --rule-hair: 2px; --rule-bar: 3px; --rule-box: 4px;
 }
