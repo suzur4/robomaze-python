@@ -18,7 +18,6 @@ const TOOL = {
   right: ["右を向く", "right()"],
   open: ["ドアを開ける", "open_door()"],
   for: ["くり返す", "for i in range(3):", true],
-  ifdoor: ["もしドアが閉まっていたら", "if not door_is_open():", true],
   ifopen: ["もしドアが開いていたら", "if door_is_open():", true],
   dforward: ["進む", "forward(100)"],
   dleft: ["左に回る", "left(90)"],
@@ -87,7 +86,7 @@ else:                <span class="note">← そうでなければ</span>
       <p class="task">順番・くり返し・場合分けを使って、ゴールまで進めましょう。くり返しが使えるところは for にまとめます。</p>
       <p><code>#</code> から右はメモです。実行されません。</p>`,
     map: ["##########", "#S...#####", "####.#####", "####.....#", "########.#", "########G#", "##########"],
-    tools: ["forward", "left", "right", "open", "for", "ifdoor"],
+    tools: ["forward", "left", "right", "open", "for", "ifopen", "else"],
     code: "# ここにプログラムを書こう\n",
     tip: (f) => (f && f.loops < 1 ? "ゴールできました。同じ命令が続くところを for にまとめると、もっと短く書けます。" : ""),
   },
@@ -99,7 +98,7 @@ else:                <span class="note">← そうでなければ</span>
       <p>このロボットは <code>right()</code> が故障していて使えません。</p>
       <p class="task">右を向きたいとき、使える命令だけでどうすればよいか考えて、ゴールまで進めましょう。</p>`,
     map: ["#########", "#S..#####", "###.#####", "###...###", "#####.###", "#####G###", "#########"],
-    tools: ["forward", "left", "open", "for", "ifdoor"],
+    tools: ["forward", "left", "open", "for", "ifopen", "else"],
     code: "# right() は使えません\n",
   },
   {
@@ -413,7 +412,7 @@ const LIFE = {
   "6-1": "通販サイトの「価格の安い順」も、並べ替えのアルゴリズムで作られています。",
 };
 /* 迷路の最短チャレンジ。空行と # のメモをのぞいた行数が、この数以下なら ★。 */
-const GOAL_LINES = { 2: 2, 3: 10, 4: 13, 5: 15, "4-3": 10 };
+const GOAL_LINES = { 2: 2, 3: 10, 4: 15, 5: 17, "4-3": 10 };
 /* 命令の数を数える。; で1行に並べたり、for の行に続けて書いたりしても、1つずつ数える。 */
 const countLines = (code) => code.split("\n").reduce((n, l) => {
   const t = l.replace(/("[^"]*"|'[^']*')/g, "\"\"").replace(/#.*$/, "").trim();
@@ -422,6 +421,36 @@ const countLines = (code) => code.split("\n").reduce((n, l) => {
   const inline = /^(for|if|elif|else|while|def)\b.*:\s*\S/.test(t) ? 1 : 0;
   return n + parts + inline;
 }, 0);
+/* for をほどいて1つずつ書いたときの行数。range( ) に数が直接書いてある for だけをほどく。
+   if と else は両方の行を数える（書くときは両方書くため）。ほどけない形は、そのままの行数で数える。 */
+function flatLines(code) {
+  const root = { kids: [] }, stack = [{ ind: -1, node: root }];
+  for (const raw of code.split("\n")) {
+    const t = raw.replace(/("[^"]*"|'[^']*')/g, "\"\"").replace(/#.*$/, "").trimEnd();
+    if (!t.trim()) continue;
+    const ind = t.length - t.replace(/^[ \t]+/, "").length;
+    const s = t.trim();
+    const head = /^(for|if|elif|else|while|def)\b[^:]*:/.exec(s);
+    const rest = head ? s.slice(head[0].length).trim() : "";
+    const node = { head: head ? head[0] : "", n: head ? (rest ? rest.split(";").filter((x) => x.trim()).length : 0) : (s.split(";").filter((x) => x.trim()).length || 1), kids: [] };
+    while (stack.length > 1 && stack[stack.length - 1].ind >= ind) stack.pop();
+    stack[stack.length - 1].node.kids.push(node);
+    if (head && !rest) stack.push({ ind, node });
+  }
+  const times = (h) => {
+    const m = /^for\s+\w+\s+in\s+range\(\s*(-?\d+)\s*(?:,\s*(-?\d+)\s*(?:,\s*(-?\d+)\s*)?)?\)\s*:$/.exec(h);
+    if (!m) return null;
+    const [a, b, st] = m[2] == null ? [0, +m[1], 1] : [+m[1], +m[2], m[3] == null ? 1 : +m[3]];
+    return st === 0 ? null : Math.max(0, Math.ceil((b - a) / st));
+  };
+  const size = (node) => {
+    const inner = node.n + node.kids.reduce((x, k) => x + size(k), 0);
+    if (!node.head) return inner;
+    const k = times(node.head);
+    return k == null ? 1 + inner : k * inner;
+  };
+  return root.kids.reduce((x, k) => x + size(k), 0);
+}
 
 /* 色は「順次・反復・選択のどれか」を表すときだけ使う。フローチャートの箱、命令ボタン、説明欄の札で同じ色。 */
 const KIND = {
@@ -1317,7 +1346,7 @@ function finishRun() {
     if (goal != null) {
       const n = countLines(last.code), prev = store.data.best[stage.id];
       if (prev == null || n < prev) { store.data.best[stage.id] = n; store.save(); }
-      const flat = results[shown].actions.filter((x) => x.t === "move" || x.t === "turn" || x.t === "open").length;
+      const flat = flatLines(last.code);
       if (flat > n) kids.push(h("p", "", `くり返しを使わずに1つずつ書くと ${flat} 行になります。いまは ${n} 行なので、${flat - n} 行短く書けています。`));
       kids.push(h("p", "star", n <= goal
         ? `★ 最短チャレンジ達成。${n} 行で書けました（目標 ${goal} 行以下）。`
